@@ -3,7 +3,7 @@ import Message from "../models/messageModel.js";
 
 import mongoose from "mongoose";
 
-import { errorStatus, errorReturn } from "../handlers/errorHandlers.js";
+import { errorReturn } from "../handlers/errorHandlers.js";
 
 import conversationHandlers from "../handlers/conversationHandlers.js";
 

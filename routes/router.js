@@ -29,10 +29,10 @@ router.get(
   requireLogin.isAuthenticated,
   gameTestController.chatWithQwenNew
 );
-router.get(
+router.post(
   "/test/chat/:id",
   requireLogin.isAuthenticated,
-  gameTestController.chatWithQwen
+  gameTestController.chatInConservationById
 );
 
 // conversation
