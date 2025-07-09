@@ -1,8 +1,3 @@
-import Conversation from "../models/conversationModel.js";
-import Message from "../models/messageModel.js";
-
-import mongoose from "mongoose";
-
 import { errorReturn } from "../handlers/errorHandlers.js";
 
 import conversationHandlers from "../handlers/conversationHandlers.js";
@@ -20,6 +15,33 @@ const getConservationById = async (req, res) => {
   }
 };
 
+const getConservation = async (req, res) => {
+  try {
+    const conversations = await conversationHandlers.getConservation(
+      req.query,
+      req.user._id
+    );
+    return res.status(200).send({ conversations });
+  } catch (error) {
+    return errorReturn(res, error);
+  }
+};
+
+const editConservationById = async (req, res) => {
+  try {
+    const conversations = await conversationHandlers.editConservationById(
+      req.params.id,
+      req.body.title,
+      req.user._id
+    );
+    return res.status(200).send({ message: true });
+  } catch (error) {
+    return errorReturn(res, error);
+  }
+};
+
 export default {
   getConservationById,
+  getConservation,
+  editConservationById,
 };

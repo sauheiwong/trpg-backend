@@ -1,4 +1,5 @@
 const isAuthenticated = async (req, res, next) => {
+  console.log("req.isAuthenticated is :", req.isAuthenticated);
   if (req.isAuthenticated()) {
     return next();
   }

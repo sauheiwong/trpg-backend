@@ -1,6 +1,9 @@
 import userHandler from "../handlers/userHandler.js";
 import { body, validationResult } from "express-validator";
 import passport from "passport";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
 
 const register = async (req, res) => {
   const callback = (err, newUser) => {
@@ -19,18 +22,26 @@ const register = async (req, res) => {
 };
 
 const login = (req, res, next) => {
-  passport.authenticate("local", (err, user, info) => {
+  passport.authenticate("local", { session: false }, (err, user, info) => {
     if (err) {
       return next(err);
     }
     if (!user) {
-      return res.status(400).send({ message: "username or password wrong" });
+      return res
+        .status(400)
+        .send({ message: info ? info.message : "username or password wrong" });
     }
-    req.logIn(user, (err) => {
+    req.logIn(user, { session: false }, (err) => {
       if (err) {
         return next(err);
       }
-      return res.status(200).send({ message: "login success" });
+
+      // build a JWT payload
+      const payload = { id: user._id, username: user.username };
+      const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, {
+        expiresIn: "1h",
+      });
+      return res.status(200).send({ token: `Bearer ${token}` });
     });
   })(req, res, next);
 };

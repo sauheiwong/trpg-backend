@@ -1,11 +1,11 @@
 import express from "express";
 import morgan from "morgan";
-import session from "express-session";
-import MongoStore from "connect-mongo";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import passport from "passport";
 import { router } from "./routes/router.js";
 import { notFound } from "./handlers/errorHandlers.js";
+import configurePassport from "./config/passport.js";
 import methodOverride from "method-override";
 import "./handlers/passport.js";
 
@@ -21,21 +21,30 @@ app.use(methodOverride("_method"));
 app.use(morgan("dev")); // logging middleware
 app.use(cookieParser()); // cookie parsing middleware
 
-// session middleware
-app.use(
-  session({
-    secret: process.env.PASSPORT_SECRET,
-    key: process.env.PASSPORT_COOKIE_KEY,
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: process.env.DB_CONN, // store session in mongoDB (not in memory)
-    }),
-  })
-);
+// app.use(cors()); // dev environment
+
+// production environment
+// const corsOptions = {
+//   origin: 'http://localhost:5173', // 你的 Vue App 的網址
+//   optionsSuccessStatus: 200
+// };
+// app.use(cors(corsOptions));
 
 app.use(passport.initialize()); // passport middleware
-app.use(passport.session()); // persistent login sessions
+configurePassport(passport);
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*"); // Or specify your origin: "http://127.0.0.1:5500"
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+  );
+  next();
+});
 
 app.use("/", router);
 
