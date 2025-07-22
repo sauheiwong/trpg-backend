@@ -11,6 +11,14 @@ const userSchema = mongoose.Schema({
     trim: true,
     validate: [validator.isEmail, "Invalid email"],
   },
+  name: {
+    type: String,
+    default: "User",
+  },
+  language: {
+    type: String,
+    default: "English",
+  },
 });
 
 userSchema.plugin(plm);

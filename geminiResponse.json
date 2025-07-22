@@ -1,0 +1,44 @@
+{
+    "sdkHttpResponse": {
+        "headers": {
+            "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+            "content-encoding": "gzip",
+            "content-type": "application/json; charset=UTF-8",
+            "date": "Tue, 22 Jul 2025 07:05:01 GMT",
+            "server": "scaffolding on HTTPServer2",
+            "server-timing": "gfet4t7; dur=4967",
+            "transfer-encoding": "chunked",
+            "vary": "Origin, X-Origin, Referer",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "SAMEORIGIN",
+            "x-xss-protection": "0"
+        }
+    },
+    "candidates": [
+        {
+            "content": {
+                "parts": [
+                    {
+                        "text": "喔，看來你是初次接觸這片未知的領域，非常好。\n\n《克蘇魯的呼喚》（Call of Cthulhu）是一款基於美國作家H.P.洛夫克拉夫特（H.P. Lovecraft）所創立的「克蘇魯神話」體系的桌面角色扮演遊戲（TRPG）。\n\n簡單來說，它不是你一般玩的那種英雄成長、斬妖除魔的冒險遊戲。在《克蘇魯的呼喚》中：\n\n*   **你扮演的不是英雄**：你通常扮演的是一群普通的調查員，例如學者、偵探、記者、醫生，或是任何一個好奇心過剩的普通人。\n*   **你面對的不是尋常敵人**：你所面對的，是來自宇宙深處、時間盡頭的古老存在，它們的本質遠超人類理解，僅僅是目睹它們的存在，就可能導致心智崩潰。\n*   **目的不是征服，而是理解與倖存**：遊戲的目標往往不是去「擊敗」這些恐怖，因為它們通常是無法被擊敗的。更多的是去理解它們的企圖、它們對世界的影響，然後試圖阻止一些不可名狀的災難，或者至少，在理智尚存的情況下倖存下來。\n*   **理智（Sanity）是你的生命線**：這是遊戲的核心機制。當你遭遇異常、恐怖或超越理解的事件時，你的理智值會隨之下降。理智的喪失會導致精神錯亂，甚至永遠地陷入瘋狂。\n*   **恐怖與懸疑**：遊戲著重於營造氣氛、揭示緩慢而令人不安的真相，以及因人類的渺小和宇宙的漠然所帶來的深層恐懼。\n\n總之，這是一場關於**探索未知、面對不可名狀之恐怖，以及在理智與瘋狂邊緣掙扎**的旅程。你準備好踏入那扇通往深淵的門了嗎？\n\n那麼，你是否準備好繼續我們的劇本設定討論了呢？請告訴我你的選擇：\n\n1.  **你希望故事發生在什麼時代背景？**\n2.  **你腦海中有沒有特定的故事發生地點？**\n3.  **你所扮演的角色是什麼樣的？**\n4.  **你比較偏好哪一種類型的恐怖？**"
+                    }
+                ],
+                "role": "model"
+            },
+            "finishReason": "STOP",
+            "index": 0
+        }
+    ],
+    "modelVersion": "gemini-2.5-flash",
+    "usageMetadata": {
+        "promptTokenCount": 559,
+        "candidatesTokenCount": 529,
+        "totalTokenCount": 1305,
+        "promptTokensDetails": [
+            {
+                "modality": "TEXT",
+                "tokenCount": 559
+            }
+        ],
+        "thoughtsTokenCount": 217
+    }
+}

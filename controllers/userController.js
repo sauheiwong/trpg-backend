@@ -14,6 +14,13 @@ const register = async (req, res) => {
     }
   };
 
+  console.log(
+    "username is :",
+    req.body.username,
+    "password is :",
+    req.body.password
+  );
+
   await userHandler.register({
     username: req.body.username,
     password: req.body.password,
@@ -61,22 +68,12 @@ const validateRegister = [
   body("password")
     .isLength({ min: 6 })
     .withMessage("Password must be at least 6 characters"),
-  body("confirm-password")
-    .isLength({ min: 6 })
-    .withMessage("Confirm Password must be at least 6 characters"),
-  body("confirm-password")
-    .custom((value, { req }) => {
-      return value === req.body.password;
-    })
-    .withMessage("Password does not match Confirm Password"),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res
         .status(400)
-        .send({ error: errors.errors.map((err) => err.msg).join(". ") });
-      // req.flash("danger", errors.errors.map((err) => err.msg).join(". "));
-      // res.render("register", { title: "Register", flashes: req.flash() });
+        .send({ message: errors.errors.map((err) => err.msg).join(". ") });
     } else {
       next();
     }
@@ -102,7 +99,9 @@ const validateLogin = [
 ];
 
 const getUser = async (req, res) => {
-  return res.status(200).send({ username: req.user.username });
+  return res
+    .status(200)
+    .send({ name: req.user.name, language: req.user.language });
 };
 
 export default {

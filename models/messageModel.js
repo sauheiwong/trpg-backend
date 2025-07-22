@@ -3,14 +3,14 @@ import mongoose from "mongoose";
 const Schema = mongoose.Schema;
 
 const messageSchema = new Schema({
-  conversationId: {
+  gameId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "conversation",
+    ref: "game",
     required: true,
   },
   role: {
     type: String,
-    enum: ["user", "assistant", "system"],
+    enum: ["user", "model"],
     required: true,
   },
   content: {
@@ -23,6 +23,6 @@ const messageSchema = new Schema({
   },
 });
 
-messageSchema.index({ conversationId: 1, timestamp: -1 });
+messageSchema.index({ gameId: 1, timestamp: -1 });
 
 export default mongoose.model("message", messageSchema);

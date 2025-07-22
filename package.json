@@ -12,7 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@google/genai": "^1.1.0",
+    "@google/generative-ai": "^0.24.1",
     "bootstrap": "^5.3.6",
     "bootswatch": "^5.3.6",
     "connect-flash": "^0.1.1",
