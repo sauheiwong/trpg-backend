@@ -8,56 +8,52 @@ import { JSDOM } from "jsdom";
 import { errorStatus, errorReturn } from "./errorHandlers.js";
 
 const createGame = async (userId) => {
-  try{
-    return await Game.create({userId});
-  } catch (error){
-    throw error
+  try {
+    return await Game.create({ userId, title: "new game" });
+  } catch (error) {
+    throw error;
   }
-  
-}
+};
 
 const getGameById = async (gameId, userId) => {
-  try{
+  try {
     if (!gameId) {
-    throw errorStatus("miss game id", 400);
-  }
+      throw errorStatus("miss game id", 400);
+    }
 
-  if (!mongoose.Types.ObjectId.isValid(gameId)) {
-    throw errorStatus("Invaild id", 400);
-  }
+    if (!mongoose.Types.ObjectId.isValid(gameId)) {
+      throw errorStatus("Invaild id", 400);
+    }
 
-  const game = await Game.findById(gameId);
+    const game = await Game.findById(gameId);
 
-  if (!game) {
-    throw errorStatus("not found", 404);
-  }
+    if (!game) {
+      throw errorStatus("not found", 404);
+    }
 
-  if (!game.userId.equals(userId)) {
-    throw errorStatus("Forbidden", 403);
-  }
+    if (!game.userId.equals(userId)) {
+      throw errorStatus("Forbidden", 403);
+    }
 
-  const messages = await Message.find({
-    gameId: game._id,
-  })
-    .sort({ timestamp: 1 })
-    .select("role content")
-    .exec();
+    const messages = await Message.find({
+      gameId: game._id,
+    })
+      .sort({ timestamp: 1 })
+      .select("role content")
+      .exec();
 
-  return {
-    title: game.title,
-    messages,
-  };
+    return {
+      title: game.title,
+      messages,
+    };
   } catch (error) {
-    throw error
+    throw error;
   }
-  
 };
 
 const getGame = async (query, userId) => {
   query.userId = userId;
-  const games = await Game.find(query).select(
-    "title updatedAt"
-  );
+  const games = await Game.find(query).select("title updatedAt");
   return games;
 };
 

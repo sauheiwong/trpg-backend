@@ -23,7 +23,9 @@ router.post("/api/login", userController.validateLogin, userController.login);
 router.get("/api/logout", userController.logout);
 
 // user setting
-router.get("/user", requireAuth, userController.getUser);
+router.get("/api/user", requireAuth, userController.getUser);
+
+router.put("/api/user", requireAuth, userController.editUser);
 
 // gemini
 router.get("/api/gemini", requireAuth, geminiController.chatWithGeminiNew);
@@ -43,10 +45,10 @@ router.post(
 );
 
 // game
-router.get("/api/chat", requireAuth, gameController.getGame);
+router.get("/api/game", requireAuth, gameController.getGame);
 
-router.get("/api/chat/:id", requireAuth, gameController.getGameById);
+router.get("/api/game/:id", requireAuth, gameController.getGameById);
 
-router.put("/api/chat/:id", requireAuth, gameController.editGameById);
+router.put("/api/game/:id", requireAuth, gameController.editGameById);
 
-router.delete("/api/chat/:id", requireAuth, gameController.deleteGameById);
+router.delete("/api/game/:id", requireAuth, gameController.deleteGameById);

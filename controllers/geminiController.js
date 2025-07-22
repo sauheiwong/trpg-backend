@@ -7,11 +7,10 @@ import messageHandlers from "../handlers/messageHandlers.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
 
-const userLanguage = "繁體中文";
-
 const startPrompt = `你好，KP。我準備好開始一場新的冒險了，請引導我。`;
 
-const systemPrompt = `
+const systemPrompt = (userLanguage) => {
+  return `
     你是專業克蘇魯的呼喚trpg的KP。你的任務是引導玩家完成一次充滿未
       知、恐怖和瘋狂的冒險。
     **開場**：首先，你需要主動向玩家提問，以確定劇本的基礎設定，例
@@ -33,6 +32,7 @@ const systemPrompt = `
         功/失敗』這些字眼，而是要將結果融入到故事敘述中。
    **語言**：請使用${userLanguage}進行所有對話。
                     `;
+};
 
 const chatWithGeminiNew = async (req, res) => {
   const userId = req.user._id;
@@ -55,7 +55,7 @@ const chatWithGeminiNew = async (req, res) => {
   try {
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
-      systemInstruction: systemPrompt,
+      systemInstruction: systemPrompt(req.user.language),
     });
 
     const chat = model.startChat({
@@ -98,9 +98,9 @@ const chatWithGeminiById = async (req, res) => {
     return res.status(400).send({ message: "please provide your message" });
   }
 
-  //   return res.status(200).send({
-  //     message: `got your message`,
-  //   });
+  // return res.status(200).send({
+  //   message: `got your message`,
+  // });
 
   const { messages } = await gameHandlers.getGameById(gameId, userId);
 
@@ -123,7 +123,7 @@ const chatWithGeminiById = async (req, res) => {
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       config: {
-        systemInstruction: systemPrompt,
+        systemInstruction: systemPrompt(req.user.language),
       },
     });
 

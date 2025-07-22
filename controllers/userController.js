@@ -104,6 +104,15 @@ const getUser = async (req, res) => {
     .send({ name: req.user.name, language: req.user.language });
 };
 
+const editUser = async (req, res) => {
+  const { name, language } = req.body;
+  try {
+    await userHandler.edit(name, language, req.user._id);
+  } catch (error) {
+    return status(500).send({ message: error });
+  }
+};
+
 export default {
   register,
   login,
@@ -111,4 +120,5 @@ export default {
   validateLogin,
   validateRegister,
   getUser,
+  editUser,
 };
