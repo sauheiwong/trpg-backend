@@ -23,7 +23,7 @@ app.use(cookieParser()); // cookie parsing middleware
 
 app.use(
   cors({
-    origin: "https://trpg-vue-frontend.vercel.app/",
+    origin: "https://trpg-vue-frontend.vercel.app",
     credentials: true,
   })
 );
