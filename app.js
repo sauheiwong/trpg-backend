@@ -23,26 +23,13 @@ app.use(cookieParser()); // cookie parsing middleware
 
 app.use(
   cors({
-    origin: "https://your-app.vercel.app",
+    origin: "https://trpg-vue-frontend.vercel.app/",
     credentials: true,
   })
 );
 
 app.use(passport.initialize()); // passport middleware
 configurePassport(passport);
-
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*"); // Or specify your origin: "http://127.0.0.1:5500"
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  res.header(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-  );
-  next();
-});
 
 app.use("/", router);
 
