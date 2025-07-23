@@ -6,6 +6,7 @@ import userController from "../controllers/userController.js";
 import gameTestController from "../controllers/gameTestController.js";
 import gameController from "../controllers/gameController.js";
 import geminiController from "../controllers/geminiController.js";
+import rollDiceController from "../controllers/rollDiceController.js";
 
 export const router = Router();
 
@@ -43,6 +44,9 @@ router.post(
   requireAuth,
   gameTestController.chatInConservationById
 );
+
+// roll dice
+router.post("/api/roll", requireAuth, rollDiceController.rollDice);
 
 // game
 router.get("/api/game", requireAuth, gameController.getGame);
