@@ -21,14 +21,12 @@ app.use(methodOverride("_method"));
 app.use(morgan("dev")); // logging middleware
 app.use(cookieParser()); // cookie parsing middleware
 
-// app.use(cors()); // dev environment
-
-// production environment
-// const corsOptions = {
-//   origin: 'http://localhost:5173', // 你的 Vue App 的網址
-//   optionsSuccessStatus: 200
-// };
-// app.use(cors(corsOptions));
+app.use(
+  cors({
+    origin: "https://your-app.vercel.app",
+    credentials: true,
+  })
+);
 
 app.use(passport.initialize()); // passport middleware
 configurePassport(passport);
