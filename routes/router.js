@@ -3,7 +3,6 @@ import { catchErrors } from "../handlers/errorHandlers.js";
 import passport from "passport";
 
 import userController from "../controllers/userController.js";
-import gameTestController from "../controllers/gameTestController.js";
 import gameController from "../controllers/gameController.js";
 import geminiController from "../controllers/geminiController.js";
 import rollDiceController from "../controllers/rollDiceController.js";
@@ -37,13 +36,13 @@ router.post(
   geminiController.chatWithGeminiById
 );
 
-// small game test
-router.post("/api/test/chat", requireAuth, gameTestController.chatWithQwenNew);
-router.post(
-  "/api/test/chat/:id",
-  requireAuth,
-  gameTestController.chatInConservationById
-);
+// // small game test
+// router.post("/api/test/chat", requireAuth, gameTestController.chatWithQwenNew);
+// router.post(
+//   "/api/test/chat/:id",
+//   requireAuth,
+//   gameTestController.chatInConservationById
+// );
 
 // roll dice
 router.post("/api/roll", requireAuth, rollDiceController.rollDice);
