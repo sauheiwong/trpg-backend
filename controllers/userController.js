@@ -8,18 +8,11 @@ dotenv.config();
 const register = async (req, res) => {
   const callback = (err, newUser) => {
     if (err) {
-      res.status(200).send({ message: "register success" });
-    } else {
       res.status(400).send({ message: "register fail" });
+    } else {
+      res.status(200).send({ message: "register success" });
     }
   };
-
-  console.log(
-    "username is :",
-    req.body.username,
-    "password is :",
-    req.body.password
-  );
 
   await userHandler.register({
     username: req.body.username,
@@ -46,7 +39,7 @@ const login = (req, res, next) => {
       // build a JWT payload
       const payload = { id: user._id, username: user.username };
       const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, {
-        expiresIn: "1h",
+        expiresIn: "24h",
       });
       return res.status(200).send({ token: `Bearer ${token}` });
     });

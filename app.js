@@ -21,12 +21,14 @@ app.use(methodOverride("_method"));
 app.use(morgan("dev")); // logging middleware
 app.use(cookieParser()); // cookie parsing middleware
 
-app.use(
-  cors({
-    origin: "https://trpg-vue-frontend.vercel.app",
-    credentials: true,
-  })
-);
+// app.use(
+//   cors({
+//     origin: "https://trpg-vue-frontend.vercel.app",
+//     credentials: true,
+//   })
+// );
+
+app.use(cors());
 
 app.use(passport.initialize()); // passport middleware
 configurePassport(passport);
