@@ -5,7 +5,10 @@ import passport from "passport";
 import userController from "../controllers/userController.js";
 import gameController from "../controllers/gameController.js";
 import geminiController from "../controllers/geminiController.js";
+import geminiCharacterController from "../controllers/geminiCharacterController.js";
 import rollDiceController from "../controllers/rollDiceController.js";
+import characterController from "../controllers/characterController.js";
+import characterChatController from "../controllers/characterChatController.js";
 
 export const router = Router();
 
@@ -34,6 +37,25 @@ router.post(
   "/api/gemini/:id",
   requireAuth,
   geminiController.chatWithGeminiById
+);
+
+router.get(
+  "/api/gemini/characters",
+  requireAuth,
+  geminiCharacterController.chatWithGeminiNew
+);
+
+router.post(
+  "/api/gemini/characters/:id",
+  requireAuth,
+  geminiCharacterController.chatWithGeminiById
+);
+
+// character chat
+router.get(
+  "/api/chat/characters/:id",
+  requireAuth,
+  characterChatController.getChatById
 );
 
 // // small game test

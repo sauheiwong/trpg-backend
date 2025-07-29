@@ -1,5 +1,6 @@
-import Game from "../models/gameModel.js";
-import Message from "../models/messageModel.js";
+import CharacterChat from "../models/characterChatModel.js";
+import Message from "../models/characterChatMessageModel.js";
+import Character from "../models/characterModel.js";
 
 import mongoose from "mongoose";
 import createDOMPurify from "dompurify";
@@ -7,44 +8,45 @@ import { JSDOM } from "jsdom";
 
 import { errorStatus } from "./errorHandlers.js";
 
-const createGame = async (userId) => {
+const createCharacterChat = async (userId, characterId) => {
   try {
-    return await Game.create({ userId, title: "new game" });
+    return await CharacterChat.create({ userId, characterId });
   } catch (error) {
     throw error;
   }
 };
 
-const getGameById = async (gameId, userId) => {
+const getChatById = async (chatId, userId) => {
   try {
-    if (!gameId) {
-      throw errorStatus("miss game id", 400);
+    if (!chatId) {
+      throw errorStatus("miss chat id", 400);
     }
 
-    if (!mongoose.Types.ObjectId.isValid(gameId)) {
+    if (!mongoose.Types.ObjectId.isValid(chatId)) {
       throw errorStatus("Invaild id", 400);
     }
 
-    const game = await Game.findById(gameId);
+    const chat = await CharacterChat.findById(chatId);
 
-    if (!game) {
+    if (!chat) {
       throw errorStatus("not found", 404);
     }
 
-    if (!game.userId.equals(userId)) {
+    if (!chat.userId.equals(userId)) {
       throw errorStatus("Forbidden", 403);
     }
 
     const messages = await Message.find({
-      gameId: game._id,
+      chatId: chat._id,
     })
       .sort({ timestamp: 1 })
       .select("role content")
       .exec();
 
+    const character = await Character.findById(chat.characterId);
     return {
-      title: game.title,
       messages,
+      character,
     };
   } catch (error) {
     throw error;
@@ -121,9 +123,6 @@ const deleteGameById = async (gameId, userId) => {
 };
 
 export default {
-  createGame,
-  getGameById,
-  getGame,
-  editGameById,
-  deleteGameById,
+  createCharacterChat,
+  getChatById,
 };

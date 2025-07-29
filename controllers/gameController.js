@@ -4,8 +4,12 @@ import gameHandlers from "../handlers/gameHandlers.js";
 
 const getGameById = async (req, res) => {
   const gameId = req.params.id;
+  const { page, limit } = req.query;
   try {
-    const result = await gameHandlers.getGameById(gameId, req.user._id);
+    const result = await gameHandlers.getGameById(gameId, req.user._id, {
+      page,
+      limit,
+    });
     return res.status(200).send(result);
   } catch (error) {
     return errorReturn(res, error);

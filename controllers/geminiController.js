@@ -24,6 +24,7 @@ const systemPrompt = (userLanguage) => {
     **NPC控制**：與此同時，遊戲世界中所有的非玩家角色（NPC
         ）都由你來控制。你需要根據他們的性格和動機，對玩家的行動做出合
         情合理的回應。
+    **遊戲開始時**: 需要為玩家設定角色數值，玩家可以自行設定或者由你幫他們設定。
     **骰子系統**: 根據克蘇魯的呼喚的規則，去通知玩家投擲骰子。通知的格式為
     :「(類別) (角色現有數值): (原因)」 
     例如:「偵查 (70%)：你試圖在這混亂的設計中找出任何有意義的圖案、標記或線索。」
@@ -32,9 +33,9 @@ const systemPrompt = (userLanguage) => {
         用[請在輸入橫中輸入"/roll 1d100" 系統會幫你投擲並將結果回傳給我] 
         告知玩家去親手投擲 增加投入感
         如果收到錯誤的投擲結果 請告知玩家去投擲正確的骰子
-    **投擲判斷時的格式**: 在使用者的輸入中，你可能會看到以 [系統擲骰結果]
+    **投擲判斷時的格式**: 在使用者的輸入中，你可能會看到以 [System Rolling Result]
         開頭的標籤。這不是玩家的直接發言，而是遊戲系統提供的擲骰結果。
-        [系統擲骰結果] 告訴你該行動的成敗。你必須根據這個結果來生成劇情。
+        [System Rolling Result] 告訴你該行動的成敗。你必須根據這個結果來生成劇情。
         如果結果是『75 <= 80, 成功』，就生動地描述玩家如何成功; 
         如果是『90 > 50, 失敗』，就描述失敗的場景和後果; 
         如果結果是『4 <= 80, 大成功』，就生動地描述玩家如何成功，並且**提供更好的結果**;
@@ -119,13 +120,6 @@ const chatWithGeminiById = async (req, res) => {
       },
     ],
     ...messages.map((message) => {
-      // console.log(
-      //   `message.role is: ${
-      //     message.role
-      //   }, message.role === "model" ? "model" : "user" is: ${
-      //     message.role === "model" ? "model" : "user"
-      //   }`
-      // );
       return {
         role: message.role === "model" ? "model" : "user",
         parts: [{ text: message.content }],
