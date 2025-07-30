@@ -3,9 +3,9 @@ import { catchErrors } from "../handlers/errorHandlers.js";
 import passport from "passport";
 
 import userController from "../controllers/userController.js";
-import gameController from "../controllers/gameController.js";
-import geminiController from "../controllers/geminiController.js";
-import geminiCharacterController from "../controllers/geminiCharacterController.js";
+import gameController from "../controllers/gameCOCController.js";
+import geminiController from "../controllers/geminiCOCController.js";
+import geminiCharacterController from "../controllers/geminiCOCCharacterController.js";
 import rollDiceController from "../controllers/rollDiceController.js";
 import characterController from "../controllers/characterController.js";
 import characterChatController from "../controllers/characterChatController.js";
