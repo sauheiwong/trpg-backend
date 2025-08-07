@@ -1,5 +1,5 @@
 import Game from "../models/gameModel.js";
-import Character from "../models/characterModel.js";
+import Character from "../models/COCCharacterModel.js";
 
 import mongoose from "mongoose";
 import createDOMPurify from "dompurify";
@@ -7,15 +7,20 @@ import { JSDOM } from "jsdom";
 
 import { errorStatus } from "./errorHandlers.js";
 
-const createCharacter = async (userId) => {
+const getCharacter = async (characterName, userId) => {
   try {
-    const newCharacter = await Character.create({ userId });
-    return newCharacter;
+    const query = { userId };
+    if (characterName) {
+      query["name"] = characterName;
+    }
+    const characters = await Character.find(query);
+    console.log("# of characters is: ", characters.length);
+    return characters;
   } catch (error) {
-    return errorStatus(500, error);
+    throw error;
   }
 };
 
 export default {
-  createCharacter,
+  getCharacter,
 };

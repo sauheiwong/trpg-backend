@@ -2,20 +2,6 @@ import mongoose from "mongoose";
 
 const Schema = mongoose.Schema;
 
-const skillSchema = new Schema(
-  {
-    description: {
-      type: String,
-      required: true,
-    },
-    dice: String,
-    target: String,
-    duration: String,
-    effectType: String,
-  },
-  { _id: false }
-);
-
 const characterSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
@@ -29,7 +15,7 @@ const characterSchema = new Schema({
     max: Number,
     current: Number,
   },
-  MP: {
+  mp: {
     max: Number,
     current: Number,
   },
@@ -39,7 +25,7 @@ const characterSchema = new Schema({
   },
   skills: {
     type: Map,
-    of: skillSchema,
+    of: Number,
   },
   equipment: [
     {
@@ -58,10 +44,6 @@ const characterSchema = new Schema({
       description: String,
     },
   ],
-  customAttributes: {
-    type: Map,
-    of: Schema.Types.Mixed,
-  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -70,7 +52,10 @@ const characterSchema = new Schema({
     type: Date,
     default: Date.now,
   },
+  description: { type: String, required: true },
   isCompleted: { type: Boolean, default: false },
+  isAvailable: { type: Boolean, default: true },
+  imageUrl: { type: String, default: "" },
 });
 
 characterSchema.pre("save", function (next) {
@@ -80,4 +65,4 @@ characterSchema.pre("save", function (next) {
 
 characterSchema.index({ userId: 1 });
 
-export default mongoose.model("character", characterSchema);
+export default mongoose.model("COCCharacter", characterSchema);

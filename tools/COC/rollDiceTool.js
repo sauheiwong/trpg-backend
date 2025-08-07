@@ -25,13 +25,14 @@ const rollDice = (expression) => {
   }
 };
 
-const rollSingleDice = ({ actor, reason, dice }) => {
+const rollSingleDice = ({ actor, reason, dice }, userId) => {
   return `${actor}${reason}: ${rollDice(dice)}\n`;
 };
 
 const rollSingleDiceDeclaration = {
   name: "rollSingleDice",
-  description: "為遊戲中的一個角色擲骰。只適用於處理一次檢定或計算的場景。",
+  description:
+    "為遊戲中的一個角色擲骰。只適用於處理一次檢定或計算的場景。不適用於角色生成時。",
   parameters: {
     type: "object",
     properties: {

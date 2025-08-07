@@ -11,6 +11,10 @@ const gameSchema = new Schema({
   title: {
     type: String,
   },
+  characterId: {
+    type: Schema.Types.ObjectId,
+    ref: "COCCharacter",
+  },
   createdAt: {
     type: Date,
     default: Date.now,

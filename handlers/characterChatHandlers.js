@@ -1,6 +1,6 @@
 import CharacterChat from "../models/characterChatModel.js";
 import Message from "../models/characterChatMessageModel.js";
-import Character from "../models/characterModel.js";
+import Character from "../models/COCCharacterModel.js";
 
 import mongoose from "mongoose";
 import createDOMPurify from "dompurify";

@@ -16,6 +16,19 @@ const getGameById = async (req, res) => {
   }
 };
 
+const getCharacterByGameId = async (req, res) => {
+  const gameId = req.params.id;
+  try {
+    const character = await gameHandlers.getCharacterByGameId(
+      gameId,
+      req.user._id
+    );
+    return res.status(200).send({ character });
+  } catch (error) {
+    return errorReturn(res, error);
+  }
+};
+
 const getGame = async (req, res) => {
   try {
     const games = await gameHandlers.getGame(req.query, req.user._id);
@@ -53,4 +66,5 @@ export default {
   getGame,
   editGameById,
   deleteGameById,
+  getCharacterByGameId,
 };

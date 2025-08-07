@@ -11,7 +11,6 @@ const characterChatSchema = new Schema({
   characterId: {
     type: Schema.Types.ObjectId,
     ref: "character",
-    required: true,
   },
   createdAt: {
     type: Date,

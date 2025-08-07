@@ -1,14 +1,13 @@
 import { Router } from "express";
-import { catchErrors } from "../handlers/errorHandlers.js";
 import passport from "passport";
 
 import userController from "../controllers/userController.js";
-import gameController from "../controllers/gameCOCController.js";
+import gameCOCController from "../controllers/gameCOCController.js";
 import geminiController from "../controllers/geminiCOCController.js";
-import geminiCharacterController from "../controllers/geminiCOCCharacterController.js";
+// import geminiCharacterController from "../controllers/geminiCOCCharacterController.js";
 import rollDiceController from "../controllers/rollDiceController.js";
-import characterController from "../controllers/characterController.js";
-import characterChatController from "../controllers/characterChatController.js";
+import COCCharacterController from "../controllers/COCCharacterController.js";
+// import characterChatController from "../controllers/characterChatController.js";
 
 export const router = Router();
 
@@ -39,24 +38,31 @@ router.post(
   geminiController.chatWithGeminiById
 );
 
-router.get(
-  "/api/gemini/characters",
-  requireAuth,
-  geminiCharacterController.chatWithGeminiNew
-);
+// router.get(
+//   "/api/gemini/characters",
+//   requireAuth,
+//   geminiCharacterController.chatWithGeminiNew
+// );
 
-router.post(
-  "/api/gemini/characters/:id",
+// router.post(
+//   "/api/gemini/characters/:id",
+//   requireAuth,
+//   geminiCharacterController.chatWithGeminiById
+// );
+
+// coc character
+router.get(
+  "/api/coc/characters",
   requireAuth,
-  geminiCharacterController.chatWithGeminiById
+  COCCharacterController.getCharacter
 );
 
 // character chat
-router.get(
-  "/api/chat/characters/:id",
-  requireAuth,
-  characterChatController.getChatById
-);
+// router.get(
+//   "/api/chat/characters/:id",
+//   requireAuth,
+//   characterChatController.getChatById
+// );
 
 // // small game test
 // router.post("/api/test/chat", requireAuth, gameTestController.chatWithQwenNew);
@@ -70,10 +76,16 @@ router.get(
 router.post("/api/roll", requireAuth, rollDiceController.rollDice);
 
 // game
-router.get("/api/game", requireAuth, gameController.getGame);
+router.get("/api/game", requireAuth, gameCOCController.getGame);
 
-router.get("/api/game/:id", requireAuth, gameController.getGameById);
+router.get("/api/game/:id", requireAuth, gameCOCController.getGameById);
 
-router.put("/api/game/:id", requireAuth, gameController.editGameById);
+router.get(
+  "/api/game/character/:id",
+  requireAuth,
+  gameCOCController.getCharacterByGameId
+);
 
-router.delete("/api/game/:id", requireAuth, gameController.deleteGameById);
+router.put("/api/game/:id", requireAuth, gameCOCController.editGameById);
+
+router.delete("/api/game/:id", requireAuth, gameCOCController.deleteGameById);

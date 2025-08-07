@@ -7,6 +7,7 @@ import characterHandlers from "../handlers/characterHandlers.js";
 import characterChatMessageHandlers from "../handlers/characterChatMessageHandlers.js";
 
 import rollDiceTool from "../tools/COC/rollDiceTool.js";
+import saveCharacterTool from "../tools/COC/saveCharacterTool.js";
 import { errorStatus } from "../handlers/errorHandlers.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
@@ -40,23 +41,10 @@ const systemPrompt = (userLanguage) => {
       | 血量(HP) | (SIZ + CON) / 10 （小數位捨去）|
       | 魔法力(MP) | POW /5（小數位捨去） |
       | 理智(SAN) | POW |
-    **角色描述**
-      職業: string,
-      個人描述: string,
-    **技能**: 根據角色的職業和興趣有額外的技能 
-      請用
-        {
-          name: string,
-          value: 1至100,
-        }
-        的方式去儲存和顯示
-    **武器的傷害加乘**:  根據角色的職業和興趣可以有自己的武器
-      請用
-        {
-          name: string,
-          damage: string (eg. 1d4, 3d8 + 4),
-        }
-        的方式去儲存和顯示
+    **角色的職業點數**: 根據克蘇魯的呼喚7版規則去分配點數，不過不會太多，例如: 作家是EDU乘以4，運動員是 EDU x2 + (DEX 或者 STR) x2。
+    **角色的個人興趣點數**: INT乘以2。
+    **儲存角色資料**:
+      **當玩家完成角色卡並要求你儲存時，你必須立即使用 saveCharacterStatus 工具。**這工具可以將角色卡的資料儲存在系統中，在之後的冒險調用。
    **語言**：請使用${userLanguage}進行所有對話。
     `;
 };
@@ -91,25 +79,9 @@ const chatWithGeminiNew = async (req, res) => {
     const result = await AIchat.sendMessage(startPrompt);
     const modelResponseText = result.response.text();
 
-    // const modelResponseText = `
-    //     哈囉，旅人。歡迎來到一個你可能不曾想像過的世界。
-    // 我是**說書人**，或稱作**守密人（Keeper，簡稱KP）**，將會引導你體驗這趟旅程，描繪眼前的景物，扮演所有你將會遇到的人事物，並執行遊戲的規則。
-
-    // 這是**《克蘇魯的呼喚》（Call of Cthulhu）**。這不是那種你所熟悉的英雄傳奇，在這裡，你不會找到巨龍或閃亮的寶劍。這是一個**恐懼、神秘與調查**的遊 戲。你將會扮演一個在20世紀20年代的普通人（或者說，在我們開始你的故事時，你還算是個普通人），在看似日常的世界中，一步步揭開宇宙中潛藏的恐怖真相。
-
-    // 至於我們要做的……首先，我們將**創造一個屬於你的角色**。他或她將會是你進入這個瘋狂世界的雙眼與雙腳。我們會決定你的背景、職業、能力，以及你可能擁有的財富和秘密。當你的角色準備就緒後，我們就會一同踏入一場冒險，一場充滿不可名狀之物、古老知識和逐漸流失理智的旅程。你的目標將是活下來，並盡可能地保持你的心智健全……儘管這往往是個奢望。
-
-    // 準備好了嗎？讓我們從你這位角色的誕生開始吧。你希望你的角色會是怎樣的人呢？我們可以用隨機投擲的方式來決定角色的基礎屬性，或者，你可以告訴我你對角色的一些初步想法，例如他或她的性別、年齡，或者大致上是個什麼樣的人？
-    //     `;
-
     console.log("Model Response Text: ", modelResponseText);
 
-    const newCharacter = await characterHandlers.createCharacter(userId);
-
-    const chat = await characterChatHandlers.createCharacterChat(
-      userId,
-      newCharacter._id
-    );
+    const chat = await characterChatHandlers.createCharacterChat(userId);
 
     await characterChatMessageHandlers.createMessage(
       modelResponseText,
@@ -121,7 +93,6 @@ const chatWithGeminiNew = async (req, res) => {
     return res.status(200).send({
       message: modelResponseText,
       chatId: chat._id,
-      characterId: newCharacter._id,
     });
   } catch (error) {
     console.error("Error ⚠️: fail to call Gemini API: ", error);
@@ -168,6 +139,7 @@ const chatWithGeminiById = async (req, res) => {
     const availableTools = {
       rollSingleDice: rollDiceTool.rollSingleDice,
       rollCharacterStatus: rollDiceTool.rollCharacterStatus,
+      saveCharacterStatus: saveCharacterTool.saveCharacterStatus,
     };
 
     const model = genAI.getGenerativeModel({
@@ -178,6 +150,7 @@ const chatWithGeminiById = async (req, res) => {
           functionDeclarations: [
             rollDiceTool.rollSingleDiceDeclaration,
             rollDiceTool.rollCharacterStatusDeclaration,
+            saveCharacterTool.saveCharacterStatusDeclaration,
           ],
         },
       ],
@@ -210,10 +183,11 @@ const chatWithGeminiById = async (req, res) => {
         throw errorStatus(`function ${call.name} not found`, 500);
       }
 
-      const toolResult = tool(call.args);
+      // call.args.userId = userId
+
+      const toolResult = tool(call.args, userId);
 
       console.log("function execution result: ", toolResult);
-
       result = await chat.sendMessage([
         {
           functionResponse: {
@@ -225,7 +199,6 @@ const chatWithGeminiById = async (req, res) => {
         },
       ]);
     }
-
     const modelResponseText = result.response.text();
 
     console.log("Model Response Text: ", modelResponseText);

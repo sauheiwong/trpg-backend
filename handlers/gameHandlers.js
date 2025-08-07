@@ -6,6 +6,7 @@ import createDOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
 
 import { errorStatus } from "./errorHandlers.js";
+import COCCharacterHandlers from "./COCCharacterHandlers.js";
 
 const createGame = async (userId) => {
   try {
@@ -42,9 +43,16 @@ const getGameById = async (gameId, userId) => {
       .select("role content")
       .exec();
 
+    const character = await COCCharacterHandlers.getCharacterById(
+      game.characterId
+    );
+
+    // console.log("character in getGameById is: ", character);
+
     return {
       title: game.title,
       messages,
+      character,
     };
   } catch (error) {
     throw error;
@@ -120,10 +128,43 @@ const deleteGameById = async (gameId, userId) => {
   }
 };
 
+const getCharacterByGameId = async (gameId, userId) => {
+  try {
+    if (!gameId) {
+      throw errorStatus("miss game id", 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(gameId)) {
+      throw errorStatus("Invaild id", 400);
+    }
+
+    const game = await Game.findById(gameId);
+
+    if (!game) {
+      throw errorStatus("not found", 404);
+    }
+
+    if (!game.userId.equals(userId)) {
+      throw errorStatus("Forbidden", 403);
+    }
+
+    const character = await COCCharacterHandlers.getCharacterById(
+      game.characterId
+    );
+
+    return {
+      character,
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
 export default {
   createGame,
   getGameById,
   getGame,
   editGameById,
   deleteGameById,
+  getCharacterByGameId,
 };
