@@ -25,7 +25,7 @@ const rollDice = (expression) => {
   }
 };
 
-const rollSingleDice = ({ actor, reason, dice }, userId) => {
+const rollSingleDice = ({ actor, reason, dice }) => {
   return `${actor}${reason}: ${rollDice(dice)}\n`;
 };
 

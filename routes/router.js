@@ -3,7 +3,9 @@ import passport from "passport";
 
 import userController from "../controllers/userController.js";
 import gameCOCController from "../controllers/gameCOCController.js";
-import geminiController from "../controllers/geminiCOCController.js";
+import gameDNDController from "../controllers/gameDNDController.js";
+import geminiCOCController from "../controllers/geminiCOCController.js";
+import geminiDNDController from "../controllers/geminiDNDController.js";
 // import geminiCharacterController from "../controllers/geminiCOCCharacterController.js";
 import rollDiceController from "../controllers/rollDiceController.js";
 import COCCharacterController from "../controllers/COCCharacterController.js";
@@ -30,12 +32,33 @@ router.get("/api/user", requireAuth, userController.getUser);
 router.put("/api/user", requireAuth, userController.editUser);
 
 // gemini
-router.get("/api/gemini", requireAuth, geminiController.chatWithGeminiNew);
+router.get("/api/gemini", requireAuth, geminiCOCController.chatWithGeminiNew);
 
 router.post(
   "/api/gemini/:id",
   requireAuth,
-  geminiController.chatWithGeminiById
+  geminiCOCController.chatWithGeminiById
+);
+
+// gemini
+router.get("/api/gemini", requireAuth, geminiCOCController.chatWithGeminiNew);
+
+router.post(
+  "/api/gemini/:id",
+  requireAuth,
+  geminiCOCController.chatWithGeminiById
+);
+
+router.get(
+  "/api/dnd/gemini",
+  requireAuth,
+  geminiDNDController.chatWithGeminiNew
+);
+
+router.post(
+  "/api/dnd/gemini/:id",
+  requireAuth,
+  geminiDNDController.chatWithGeminiById
 );
 
 // router.get(
@@ -75,7 +98,7 @@ router.get(
 // roll dice
 router.post("/api/roll", requireAuth, rollDiceController.rollDice);
 
-// game
+// COCgame
 router.get("/api/game", requireAuth, gameCOCController.getGame);
 
 router.get("/api/game/:id", requireAuth, gameCOCController.getGameById);
@@ -89,3 +112,9 @@ router.get(
 router.put("/api/game/:id", requireAuth, gameCOCController.editGameById);
 
 router.delete("/api/game/:id", requireAuth, gameCOCController.deleteGameById);
+
+// DNDgame
+
+router.get("/api/dnd/game", requireAuth, gameDNDController.getGame);
+
+router.get("/api/dnd/game/:id", requireAuth, gameDNDController.getGameById);
