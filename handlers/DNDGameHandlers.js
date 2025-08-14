@@ -3,6 +3,8 @@ import Message from "../models/DNDMessageModel.js";
 import Character from "../models/DNDCharacterModel.js";
 
 import mongoose from "mongoose";
+import createDOMPurify from "dompurify";
+import { JSDOM } from "jsdom";
 
 import { errorStatus } from "./errorHandlers.js";
 
@@ -67,8 +69,73 @@ const getGameById = async (gameId, userId) => {
   }
 };
 
+const editGameById = async (gameId, newTitle, userId) => {
+  try {
+    if (!newTitle) {
+      throw errorStatus("please provide title", 400);
+    }
+
+    if (!gameId) {
+      throw errorStatus("miss game id", 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(gameId)) {
+      throw errorStatus("Invaild id", 400);
+    }
+
+    const game = await Game.findById(gameId);
+
+    if (!game) {
+      throw errorStatus("not found", 404);
+    }
+
+    if (!game.userId.equals(userId)) {
+      throw errorStatus("Forbidden", 403);
+    }
+
+    const window = new JSDOM("").window;
+    const DOMPurify = createDOMPurify(window);
+
+    newTitle = DOMPurify.sanitize(newTitle, { USE_PROFILES: { html: true } });
+
+    await Game.findByIdAndUpdate(gameId, { title: newTitle });
+
+    return true;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const deleteGameById = async (gameId, userId) => {
+  try {
+    if (!gameId) {
+      throw errorStatus("miss game id", 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(gameId)) {
+      throw errorStatus("Invaild id", 400);
+    }
+
+    const game = await Game.findById(gameId);
+
+    if (!game) {
+      throw errorStatus("not found", 404);
+    }
+
+    if (!game.userId.equals(userId)) {
+      throw errorStatus("Forbidden", 403);
+    }
+
+    return await Game.findByIdAndDelete(gameId);
+  } catch (error) {
+    throw error;
+  }
+};
+
 export default {
   createGame,
   getGame,
   getGameById,
+  editGameById,
+  deleteGameById,
 };

@@ -118,3 +118,11 @@ router.delete("/api/game/:id", requireAuth, gameCOCController.deleteGameById);
 router.get("/api/dnd/game", requireAuth, gameDNDController.getGame);
 
 router.get("/api/dnd/game/:id", requireAuth, gameDNDController.getGameById);
+
+router.put("/api/dnd/game/:id", requireAuth, gameDNDController.editGameById);
+
+router.delete(
+  "/api/dnd/game/:id",
+  requireAuth,
+  gameDNDController.deleteGameById
+);
