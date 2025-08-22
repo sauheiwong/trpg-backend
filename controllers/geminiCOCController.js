@@ -315,7 +315,49 @@ const chatWithGeminiById = async (req, res) => {
   }
 };
 
+const handlerNewCOCChat = async (socket) => {
+  console.log("gemini start to run 🤖")
+  const userId = socket.user._id;
+  const userLanguage = socket.user.language;
+
+  try{
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      systemInstruction: systemPrompt(userLanguage, false),
+    });
+
+    const chat = model.startChat({
+      history: [],
+    });
+
+    const result = await chat.sendMessage(startPrompt);
+    const modelResponseText = result.response.text();
+
+    console.log("Model Response Text: ", modelResponseText);
+
+    const game = await gameHandlers.createGame(userId);
+
+    await messageHandlers.createMessage(
+      modelResponseText,
+      "model",
+      game._id,
+      userId
+    );
+
+    socket.emit("game:created", {
+      message: modelResponseText,
+      gameId: game._id
+    })
+  } catch (error) {
+    console.error("Error ⚠️ in handlerNewCOCChat: fail to call Gemini API: ", error);
+    socket.emit("game:createError", {
+      message: "fail to get response from AI, please try later."
+    })
+  }
+}
+
 export default {
   chatWithGeminiNew,
   chatWithGeminiById,
+  handlerNewCOCChat,
 };

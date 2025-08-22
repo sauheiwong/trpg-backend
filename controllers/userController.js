@@ -2,8 +2,6 @@ import userHandler from "../handlers/userHandler.js";
 import { body, validationResult } from "express-validator";
 import passport from "passport";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-dotenv.config();
 
 const register = async (req, res) => {
   const callback = (err, newUser) => {
