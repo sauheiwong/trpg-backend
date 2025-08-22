@@ -40,9 +40,9 @@ const getGame = async (req, res) => {
 
 const editGameById = async (req, res) => {
   try {
-    const game = await gameHandlers.editGameById(
+    await gameHandlers.editGameById(
       req.params.id,
-      req.body.title,
+      { newTitle: req.body.title, newMemo: req.body.memo },
       req.user._id
     );
     return res.status(200).send({ message: true });
@@ -61,10 +61,25 @@ const deleteGameById = async (req, res) => {
   }
 };
 
+const getAvailableCharacter = async (req, res) => {
+  try {
+    const { name } = req.query;
+    const characters = await gameHandlers.getAvailableCharacter(
+      name,
+      req.user._id
+    );
+    console.log("number of available character is: ", characters.length);
+    return res.status(200).send({ characters });
+  } catch (error) {
+    return errorReturn(res, error);
+  }
+};
+
 export default {
   getGameById,
   getGame,
   editGameById,
   deleteGameById,
   getCharacterByGameId,
+  getAvailableCharacter,
 };

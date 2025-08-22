@@ -21,7 +21,7 @@ const getGame = async (query, userId) => {
     const games = await Game.find({ userId }) //{ ...query, userId }
       .select("title updatedAt")
       .exec();
-    console.log(games);
+    // console.log(games);
     return games;
   } catch (error) {
     throw error;
@@ -61,6 +61,7 @@ const getGameById = async (gameId, userId) => {
 
     return {
       title: game.title,
+      memo: game.memo,
       messages,
       character,
     };
@@ -69,9 +70,9 @@ const getGameById = async (gameId, userId) => {
   }
 };
 
-const editGameById = async (gameId, newTitle, userId) => {
+const editGameById = async (gameId, { newTitle, newMemo }, userId) => {
   try {
-    if (!newTitle) {
+    if (!newTitle && !newMemo) {
       throw errorStatus("please provide title", 400);
     }
 
@@ -96,9 +97,21 @@ const editGameById = async (gameId, newTitle, userId) => {
     const window = new JSDOM("").window;
     const DOMPurify = createDOMPurify(window);
 
-    newTitle = DOMPurify.sanitize(newTitle, { USE_PROFILES: { html: true } });
+    const newContent = {};
 
-    await Game.findByIdAndUpdate(gameId, { title: newTitle });
+    if (newTitle) {
+      newContent["title"] = DOMPurify.sanitize(newTitle, {
+        USE_PROFILES: { html: true },
+      });
+    }
+
+    if (newMemo) {
+      newContent["memo"] = DOMPurify.sanitize(newMemo, {
+        USE_PROFILES: { html: true },
+      });
+    }
+
+    await Game.findByIdAndUpdate(gameId, newContent);
 
     return true;
   } catch (error) {

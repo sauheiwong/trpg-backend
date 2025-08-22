@@ -61,40 +61,6 @@ router.post(
   geminiDNDController.chatWithGeminiById
 );
 
-// router.get(
-//   "/api/gemini/characters",
-//   requireAuth,
-//   geminiCharacterController.chatWithGeminiNew
-// );
-
-// router.post(
-//   "/api/gemini/characters/:id",
-//   requireAuth,
-//   geminiCharacterController.chatWithGeminiById
-// );
-
-// coc character
-router.get(
-  "/api/coc/characters",
-  requireAuth,
-  COCCharacterController.getCharacter
-);
-
-// character chat
-// router.get(
-//   "/api/chat/characters/:id",
-//   requireAuth,
-//   characterChatController.getChatById
-// );
-
-// // small game test
-// router.post("/api/test/chat", requireAuth, gameTestController.chatWithQwenNew);
-// router.post(
-//   "/api/test/chat/:id",
-//   requireAuth,
-//   gameTestController.chatInConservationById
-// );
-
 // roll dice
 router.post("/api/roll", requireAuth, rollDiceController.rollDice);
 
@@ -102,6 +68,12 @@ router.post("/api/roll", requireAuth, rollDiceController.rollDice);
 router.get("/api/game", requireAuth, gameCOCController.getGame);
 
 router.get("/api/game/:id", requireAuth, gameCOCController.getGameById);
+
+router.get(
+  "/api/coc/characters",
+  requireAuth,
+  gameCOCController.getAvailableCharacter
+);
 
 router.get(
   "/api/game/character/:id",

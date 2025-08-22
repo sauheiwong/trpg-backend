@@ -6,7 +6,7 @@ import createDOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
 
 import { errorStatus } from "./errorHandlers.js";
-import COCCharacterHandlers from "./COCCharacterHandlers.js";
+import COCCharacterModel from "../models/COCCharacterModel.js";
 
 const createGame = async (userId) => {
   try {
@@ -43,14 +43,13 @@ const getGameById = async (gameId, userId) => {
       .select("role content")
       .exec();
 
-    const character = await COCCharacterHandlers.getCharacterById(
-      game.characterId
-    );
+    const character = await COCCharacterModel.findById(game.characterId);
 
     // console.log("character in getGameById is: ", character);
 
     return {
       title: game.title,
+      memo: game.memo,
       messages,
       character,
     };
@@ -65,10 +64,10 @@ const getGame = async (query, userId) => {
   return games;
 };
 
-const editGameById = async (gameId, newTitle, userId) => {
+const editGameById = async (gameId, { newTitle, newMemo }, userId) => {
   try {
-    if (!newTitle) {
-      throw errorStatus("please provide title", 400);
+    if (!newTitle && !newMemo) {
+      throw errorStatus("please provide title or memo", 400);
     }
 
     if (!gameId) {
@@ -92,9 +91,21 @@ const editGameById = async (gameId, newTitle, userId) => {
     const window = new JSDOM("").window;
     const DOMPurify = createDOMPurify(window);
 
-    newTitle = DOMPurify.sanitize(newTitle, { USE_PROFILES: { html: true } });
+    const newContent = {};
 
-    await Game.findByIdAndUpdate(gameId, { title: newTitle });
+    if (newTitle) {
+      newContent["title"] = DOMPurify.sanitize(newTitle, {
+        USE_PROFILES: { html: true },
+      });
+    }
+
+    if (newMemo) {
+      newContent["memo"] = DOMPurify.sanitize(newMemo, {
+        USE_PROFILES: { html: true },
+      });
+    }
+
+    await Game.findByIdAndUpdate(gameId, newContent);
 
     return true;
   } catch (error) {
@@ -148,13 +159,23 @@ const getCharacterByGameId = async (gameId, userId) => {
       throw errorStatus("Forbidden", 403);
     }
 
-    const character = await COCCharacterHandlers.getCharacterById(
-      game.characterId
-    );
+    const character = await COCCharacterModel.findById(game.characterId);
 
     return {
       character,
     };
+  } catch (error) {
+    throw error;
+  }
+};
+
+const getAvailableCharacter = async (name, userId) => {
+  try {
+    return await COCCharacterModel.find({
+      name: { $regex: name, $options: "i" },
+      isAvailable: true,
+      userId,
+    });
   } catch (error) {
     throw error;
   }
@@ -167,4 +188,5 @@ export default {
   editGameById,
   deleteGameById,
   getCharacterByGameId,
+  getAvailableCharacter,
 };

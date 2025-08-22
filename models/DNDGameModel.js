@@ -15,6 +15,7 @@ const gameSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "DNDCharacter",
   },
+  memo: { type: String, default: "" },
   createdAt: {
     type: Date,
     default: Date.now,

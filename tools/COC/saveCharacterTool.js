@@ -20,9 +20,11 @@ const saveCharacterStatus = async (infor) => {
   const newCharacter = await COCCharacter.create(characterData);
   console.log("new character is: ", newCharacter);
 
-  await gameModel.findByIdAndUpdate({ characterId: newCharacter._id });
+  await gameModel.findByIdAndUpdate(infor.chatId, {
+    characterId: newCharacter._id,
+  });
 
-  return "save success";
+  return { message: "save success", newCharacter };
 };
 
 const saveCharacterStatusDeclaration = {

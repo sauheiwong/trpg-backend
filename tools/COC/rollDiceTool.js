@@ -60,7 +60,7 @@ const rollDices = ({ rolls }) => {
     const diceResult = rollDice(roll.dice);
     result += `${roll.actor}${roll.reason}: ${diceResult}\n`;
   });
-  return result;
+  return { message: result };
 };
 
 const rollDicesDeclaration = {
@@ -117,7 +117,7 @@ const rollCharacterStatus = () => {
     return `${attr.name}: ${rollResult}`;
   });
 
-  return results.join("\n");
+  return { message: results.join("\n") };
 };
 
 const rollCharacterStatusDeclaration = {

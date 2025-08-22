@@ -43,7 +43,7 @@ const editGameById = async (req, res) => {
   try {
     await gameHandlers.editGameById(
       req.params.id,
-      req.body.title,
+      { newTtile: req.body.title, newMemo: req.body.memo },
       req.user._id
     );
     return res.status(200).send({ message: true });

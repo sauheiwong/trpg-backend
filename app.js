@@ -10,7 +10,7 @@ import methodOverride from "method-override";
 import "./handlers/passport.js";
 
 // create express app
-export const app = express();
+const app = express();
 
 // takes raw requests and sticks them onto req.body
 app.use(express.json());
@@ -35,4 +35,31 @@ configurePassport(passport);
 
 app.use("/", router);
 
+// socket.io
+import http from "http"
+import { Server } from "socket.io";
+const server = http.createServer(app);
+
+const io = new Server(server, {
+    cors: {
+        origin: "http://frontend:5173",
+        methods: ["GET", "POST"]
+    }
+})
+
+io.on("connection", (socket) => {
+    console.log("a user connected: ", socket.id);
+
+    socket.on("joinGame", (gameId) => {
+        console.log(`Socket ${socket.id} is joining game room ${gameId}`);
+        socket.join(gameId);
+    });
+
+    socket.on("disconnect", () => {
+        console.log("user disconnected: ", socket.id);
+    });
+});
+
 app.use(notFound);
+
+export { app, server, io };
