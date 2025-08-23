@@ -8,6 +8,8 @@ import messageHandlers from "../handlers/messageHandlers.js";
 import rollDiceTool from "../tools/COC/rollDiceTool.js";
 import saveCharacterTool from "../tools/COC/saveCharacterTool.js";
 
+import { io } from "../app.js";
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
 
 const startPrompt = `由現在開始，我是玩家，以下是我的開場白: 「你是誰? 這是什麼遊戲? 我們要做什麼?」`;
@@ -336,18 +338,22 @@ const handlerNewCOCChat = async (socket) => {
     console.log("Model Response Text: ", modelResponseText);
 
     const game = await gameHandlers.createGame(userId);
+    const gameId = game._id;
 
     await messageHandlers.createMessage(
       modelResponseText,
       "model",
-      game._id,
+      gameId,
       userId
     );
 
     socket.emit("game:created", {
       message: modelResponseText,
-      gameId: game._id
+      gameId: gameId
     })
+    
+    socket.join(gameId);
+    console.log(`player ${socket.user.username} join game room ${gameId}`)
   } catch (error) {
     console.error("Error ⚠️ in handlerNewCOCChat: fail to call Gemini API: ", error);
     socket.emit("game:createError", {
@@ -356,8 +362,138 @@ const handlerNewCOCChat = async (socket) => {
   }
 }
 
+const handlerUserMessageCOCChat = async (data, user) => {
+  const { gameId, message } = data;
+  const userId = user._id;
+  const language = user.language;
+  if (!message || message.length === 0) {
+    throw new Error("please provide your message.")
+  }
+
+  const { messages, characterId } = await gameHandlers.getGameById(
+    gameId,
+    userId
+  );
+
+  const hasCharacter = characterId ? true : false;
+
+  // need to improve to reduce token useage---------------------
+
+  const processedMessage = [
+    ...[
+      {
+        role: "user",
+        parts: [{ text: startPrompt }],
+      },
+    ],
+    ...messages.map((message) => {
+      return {
+        role: message.role === "model" ? "model" : "user",
+        parts: [{ text: message.content }],
+      };
+    }),
+  ];
+
+  //-------------------------------------------------------------
+
+  try {
+    const availableTools = {
+      rollSingleDice: rollDiceTool.rollSingleDice,
+    };
+
+    let functionDeclarations = [rollDiceTool.rollSingleDiceDeclaration];
+
+    console.log("hasCharacter: ", hasCharacter);
+
+    if (!hasCharacter) {
+      availableTools["saveCharacterStatus"] =
+        saveCharacterTool.saveCharacterStatus;
+      availableTools["rollCharacterStatus"] = rollDiceTool.rollCharacterStatus;
+      functionDeclarations = [
+        ...functionDeclarations,
+        ...[
+          rollDiceTool.rollCharacterStatusDeclaration,
+          saveCharacterTool.saveCharacterStatusDeclaration,
+        ],
+      ];
+    }
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      systemInstruction: systemPrompt(language, hasCharacter),
+      tools: [{ functionDeclarations }],
+    });
+
+    const chat = model.startChat({
+      history: processedMessage,
+    });
+
+    let result = await chat.sendMessage(message);
+
+    let newCharacter = null;
+
+    const MAX_TURNS = 5;
+    for (let i = 0; i < MAX_TURNS; i++) {
+      const call =
+        result.response.candidates[0]?.content?.parts[0]?.functionCall;
+
+      if (!call) {
+        break;
+      }
+
+      call.args["userId"] = userId;
+      call.args["chatId"] = gameId;
+
+      console.log("model wants to call a function: ", call.name);
+      console.log("white arguments: ", call.args);
+
+      const tool = availableTools[call.name];
+
+      if (!tool) {
+        throw errorStatus(`function ${call.name} not found`, 500);
+      }
+
+      const toolResult = await tool(call.args);
+
+      console.log("function execution result: ", toolResult);
+
+      if (toolResult.newCharacter) {
+        newCharacter = toolResult.newCharacter;
+      }
+
+      result = await chat.sendMessage([
+        {
+          functionResponse: {
+            name: call.name,
+            response: toolResult,
+          },
+        },
+      ]);
+    }
+
+    const modelResponseText = result.response.text();
+
+    console.log("Model Response Text: ", modelResponseText);
+
+    await messageHandlers.createMessage(message, "user", gameId, userId);
+
+    await messageHandlers.createMessage(
+      modelResponseText,
+      "model",
+      gameId,
+      userId
+    );
+
+    io.to(gameId).emit("message:received", { message: modelResponseText, role: "model" });
+  } catch (error) {
+    console.error("Error ⚠️: fail to call Gemini API: ", error);
+    io.to(gameId).emit("message:error", { error: "Error ⚠️: fail to call Gemini API" })
+  }
+}
+
 export default {
   chatWithGeminiNew,
   chatWithGeminiById,
   handlerNewCOCChat,
+  handlerUserMessageCOCChat,
 };

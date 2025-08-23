@@ -25,8 +25,18 @@ const rollDice = (expression) => {
   }
 };
 
-const rollSingleDice = ({ actor, reason, dice }) => {
-  return `${actor}${reason}: ${rollDice(dice)}\n`;
+const rollSingleDice = ({ actor, reason, dice, success }) => {
+  const rollResult = rollDice(dice);
+
+  const responseData = {
+    actor,
+    reason,
+    dice,
+    result: rollResult,
+    success: rollResult <= success,
+  }
+
+  return responseData;
 };
 
 const rollSingleDiceDeclaration = {
@@ -49,8 +59,12 @@ const rollSingleDiceDeclaration = {
         description:
           "要擲的骰子表達式，格式為 'NdM+X'。例如：'1d100'、'1d8+1'。",
       },
+      success: {
+        type: "number",
+        description: "行動成功的上限值。擲骰結果必須小於或等於此數值才算成功。"
+      },
     },
-    required: ["actor", "reason", "dice"],
+    required: ["actor", "reason", "dice", "success"],
   },
 };
 

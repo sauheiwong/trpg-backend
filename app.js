@@ -63,12 +63,18 @@ io.on("connection", (socket) => {
     })
     
     socket.on("joinGame", (gameId) => {
-        console.log(`Socket ${socket.id} is joining game room ${gameId}`);
+        console.log(`Socket ${socket.user.username} is joining game room ${gameId}`);
         socket.join(gameId);
     });
 
+    socket.on("sendMessage", (data) => {
+        console.log(`Player ${socket.user.username} sent a message ${data.message} to gemini in room ${data.gameId}`);
+        geminiCOCController.handlerUserMessageCOCChat(data, socket.user);
+    })
+
+
     socket.on("disconnect", () => {
-        console.log("user disconnected: ", socket.id);
+        console.log("user disconnected: ", socket.user.username);
     });
 });
 
