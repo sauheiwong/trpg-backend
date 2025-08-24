@@ -1,5 +1,6 @@
 import COCCharacter from "../../models/COCCharacterModel.js";
 import gameModel from "../../models/gameModel.js";
+import { io } from "../../app.js";
 
 const saveCharacterStatus = async (infor) => {
   console.log("infor is: ", JSON.stringify(infor));
@@ -20,9 +21,11 @@ const saveCharacterStatus = async (infor) => {
   const newCharacter = await COCCharacter.create(characterData);
   console.log("new character is: ", newCharacter);
 
-  await gameModel.findByIdAndUpdate(infor.chatId, {
+  await gameModel.findByIdAndUpdate(infor.gameId, {
     characterId: newCharacter._id,
   });
+
+  io.to(gameId).emit("systemMessage:received", { message: "save character success" })
 
   return { message: "save success", newCharacter };
 };

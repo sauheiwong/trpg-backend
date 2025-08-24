@@ -1,3 +1,5 @@
+import { io } from "../../app.js";
+
 const rollDice = (expression) => {
   try {
     const resolvedExpression = expression
@@ -25,8 +27,10 @@ const rollDice = (expression) => {
   }
 };
 
-const rollSingleDice = ({ actor, reason, dice, success }) => {
+const rollSingleDice = ({ actor, reason, dice, success, gameId }) => {
   const rollResult = rollDice(dice);
+
+  console.log(`roll dice: ${rollResult}, success limit is: ${success}, so ${rollResult <= success}`);
 
   const responseData = {
     actor,
@@ -35,6 +39,8 @@ const rollSingleDice = ({ actor, reason, dice, success }) => {
     result: rollResult,
     success: rollResult <= success,
   }
+
+  io.to(gameId).emit("systemMessage:received", { message: `roll dice: ${rollResult}, success limit is: ${success}, so ${rollResult <= success}` })
 
   return responseData;
 };
@@ -68,52 +74,7 @@ const rollSingleDiceDeclaration = {
   },
 };
 
-const rollDices = ({ rolls }) => {
-  let result = "";
-  rolls.forEach((roll) => {
-    const diceResult = rollDice(roll.dice);
-    result += `${roll.actor}${roll.reason}: ${diceResult}\n`;
-  });
-  return { message: result };
-};
-
-const rollDicesDeclaration = {
-  name: "rollDices",
-  description:
-    "為遊戲中的一個或多個角色同時擲骰。適用於需要一次處理多個檢定或計算的場景。",
-  parameters: {
-    type: "object",
-    properties: {
-      rolls: {
-        type: "array",
-        description: "一個包含所有擲骰請求的陣列。每個請求都是一個獨立的物件。",
-        items: {
-          type: "object",
-          properties: {
-            actor: {
-              type: "string",
-              description: "擲骰的角色名稱。例如：'邪教徒A'、'玩家B'。",
-            },
-            reason: {
-              type: "string",
-              description:
-                "本次擲骰的原因或目的。例如：'理智檢定'、'手槍射擊'。",
-            },
-            dice: {
-              type: "string",
-              description:
-                "要擲的骰子表達式，格式為 'NdM+X'。例如：'1d100'、'1d8+1'。",
-            },
-          },
-          required: ["actor", "reason", "dice"],
-        },
-      },
-    },
-    required: ["rolls"],
-  },
-};
-
-const rollCharacterStatus = () => {
+const rollCharacterStatus = ({ gameId }) => {
   const attributes = [
     { name: "力量 (STR)", dice: "(3d6)*5" },
     { name: "體質 (CON)", dice: "(3d6)*5" },
@@ -126,30 +87,26 @@ const rollCharacterStatus = () => {
     { name: "幸運 (LUCK)", dice: "(3d6)*5" },
   ];
 
-  const results = attributes.map((attr) => {
-    const rollResult = rollDice(attr.dice);
-    return `${attr.name}: ${rollResult}`;
-  });
+  const result = {};
 
-  return { message: results.join("\n") };
+  attributes.forEach((attr) => {
+    result[`${attr.name}`] = rollDice(attr.dice)
+  })
+
+  io.to(gameId).emit("systemMessage:received", { message: "roll character status is: \n"+result })
+
+  return result;
 };
 
 const rollCharacterStatusDeclaration = {
   name: "rollCharacterStatus",
   description:
-    "當玩家要求為其新角色擲決定基礎屬性（如力量、體質、智力等）時使用此工具。此工具會一次性擲完所有必要的屬性。",
-  parameters: {
-    type: "object",
-    properties: {},
-    required: [],
-  },
+    "當玩家沒有角色，並希望透過隨機擲骰的方式來創建新角色時，使用此工具生成角色的初始六大屬性（力量、敏捷、體質等）。",
 };
 
 export default {
   rollSingleDice,
   rollSingleDiceDeclaration,
-  rollDices,
-  rollDicesDeclaration,
   rollCharacterStatus,
   rollCharacterStatusDeclaration,
 };
