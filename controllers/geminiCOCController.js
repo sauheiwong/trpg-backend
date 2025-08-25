@@ -60,7 +60,7 @@ const systemPrompt = (userLanguage, haveCharacter) => {
 你必須嚴格遵循以下的JSON指令塊來扮演CoC KP的角色：
 {
   "persona": "專業、友善、高效的CoC TRPG守密人(KP)。",
-  "primary_goal": "引導無角色玩家(hasCharacter: false)完成創角流程。",
+  "primary_goal": "引導無角色玩家完成創角流程。",
   "decision_flow": {
     "no_character": "嚴格遵循: 1.熱情歡迎並解釋創角選項(隨機擲骰/點數購買)，詢問偏好。 2.若玩家選'隨機擲骰'並要求代勞，必須立即且唯一地使用'rollCharacterStatus'工具，禁止事前對話，直接呈現JSON結果後再解釋。 3.若玩家選'點數購買'，告知總點數460(範圍15-90)並引導分配。 4.玩家確認完成後，必須使用'saveCharacterStatus'工具儲存。"
   },
@@ -352,31 +352,18 @@ const handlerUserMessageCOCChat = async (data, user) => {
     throw Error("please provide your message.")
   }
 
-  const { messages, characterId } = await gameHandlers.getGameById(
+  const userNewMessage = await messageHandlers.createMessage(message, "user", gameId, userId);
+
+  const newMessgesId = [userNewMessage._id];
+
+  const { messages, character } = await gameHandlers.getGameById(
     gameId,
     userId
   );
 
-  const hasCharacter = characterId ? true : false;
+  // console.log("character is: ", character);
 
-  // need to improve to reduce token useage---------------------
-
-  const processedMessage = [
-    ...[
-      {
-        role: "user",
-        parts: [{ text: startPrompt }],
-      },
-    ],
-    ...messages.map((message) => {
-      return {
-        role: message.role === "model" ? "model" : "user",
-        parts: [{ text: message.content }],
-      };
-    }),
-  ];
-
-  //-------------------------------------------------------------
+  const hasCharacter = character ? true : false;
 
   try {
     const availableTools = {
@@ -406,6 +393,25 @@ const handlerUserMessageCOCChat = async (data, user) => {
       tools: [{ functionDeclarations }],
     });
 
+    // need to improve to reduce token useage---------------------
+
+    const processedMessage = [
+      ...[
+        {
+          role: "user",
+          parts: [{ text: startPrompt }],
+        },
+      ],
+      ...messages.map((message) => {
+        return {
+          role: message.role === "model" ? "model" : "user",
+          parts: [{ text: message.content }],
+        };
+      }),
+    ];
+
+    //-------------------------------------------------------------
+
     const requestContent = {
       contents: [
         ...processedMessage,
@@ -426,8 +432,6 @@ const handlerUserMessageCOCChat = async (data, user) => {
     });
 
     let result = await chat.sendMessage(message);
-
-    let newCharacter = null;
 
     const MAX_TURNS = 5;
     for (let i = 0; i < MAX_TURNS; i++) {
@@ -452,13 +456,11 @@ const handlerUserMessageCOCChat = async (data, user) => {
         throw errorStatus(`function ${call.name} not found`, 500);
       }
 
-      const toolResult = await tool(call.args);
+      const { toolResult, messageId } = await tool(call.args);
+
+      newMessgesId.push(messageId)
 
       console.log("function execution result: ", toolResult);
-
-      if (toolResult.newCharacter) {
-        newCharacter = toolResult.newCharacter;
-      }
 
       result = await chat.sendMessage([
         {
@@ -474,7 +476,12 @@ const handlerUserMessageCOCChat = async (data, user) => {
 
     console.log("Model Response Text: ", modelResponseText);
 
-    await messageHandlers.createMessage(message, "user", gameId, userId);
+    if (!modelResponseText || modelResponseText.trim() === "" ) {
+      console.error("Error ⚠️: Gemini returned an empty response.");
+      throw new Error("Gemini returned an empty response");
+    }
+
+    console.log("Gemini Response Text is valid, saving messages to DB...")
 
     await messageHandlers.createMessage(
       modelResponseText,
@@ -486,7 +493,8 @@ const handlerUserMessageCOCChat = async (data, user) => {
     io.to(gameId).emit("message:received", { message: modelResponseText, role: "model" });
   } catch (error) {
     console.error("Error ⚠️: fail to call Gemini API: ", error);
-    io.to(gameId).emit("message:error", { error: "Error ⚠️: fail to call Gemini API" })
+    io.to(gameId).emit("message:error", { error: "Error ⚠️: fail to call Gemini API", originalMessage: message })
+    newMessgesId.forEach((messageId) => messageHandlers.deleteMessage(messageId));
   }
 }
 

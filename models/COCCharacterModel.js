@@ -19,6 +19,7 @@ const characterSchema = new Schema({
     max: Number,
     current: Number,
   },
+  san: { type: Number },
   attributes: {
     type: Map,
     of: Number,

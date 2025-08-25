@@ -1,5 +1,7 @@
 import { io } from "../../app.js";
 
+import messageHandlers from "../../handlers/messageHandlers.js";
+
 const rollDice = (expression) => {
   try {
     const resolvedExpression = expression
@@ -19,30 +21,35 @@ const rollDice = (expression) => {
     const calculate = new Function(`return ${resolvedExpression}`);
     const finalResult = calculate();
 
-    return `${expression} => ${resolvedExpression} = ${Math.floor(
-      finalResult
-    )}`;
+    return {
+      message: `${expression} => ${resolvedExpression} = ${Math.floor(finalResult)}`,
+      result: Math.floor(finalResult),
+    };
   } catch (error) {
     return "Invalid dice format";
   }
 };
 
-const rollSingleDice = ({ actor, reason, dice, success, gameId }) => {
+const rollSingleDice = async({ actor, reason, dice, success, gameId, userId }) => {
   const rollResult = rollDice(dice);
 
-  console.log(`roll dice: ${rollResult}, success limit is: ${success}, so ${rollResult <= success}`);
+  console.log(`roll dice: ${rollResult.message}, success limit is: ${success}, so ${rollResult.result <= success}`);
 
   const responseData = {
     actor,
     reason,
     dice,
-    result: rollResult,
-    success: rollResult <= success,
+    result: rollResult.message,
+    success: rollResult.result <= success,
   }
 
-  io.to(gameId).emit("systemMessage:received", { message: `roll dice: ${rollResult}, success limit is: ${success}, so ${rollResult <= success}` })
+  const message = `roll dice: ${rollResult.message}, success limit is: ${success}, so ${rollResult.result <= success ? "SUCCESS" : "FAIL"}`
 
-  return responseData;
+  io.to(gameId).emit("systemMessage:received", { message })
+
+  const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
+
+  return { toolResult: responseData, messageId: newMessage._id };
 };
 
 const rollSingleDiceDeclaration = {
@@ -74,7 +81,7 @@ const rollSingleDiceDeclaration = {
   },
 };
 
-const rollCharacterStatus = ({ gameId }) => {
+const rollCharacterStatus = async({ gameId, userId }) => {
   const attributes = [
     { name: "力量 (STR)", dice: "(3d6)*5" },
     { name: "體質 (CON)", dice: "(3d6)*5" },
@@ -89,13 +96,22 @@ const rollCharacterStatus = ({ gameId }) => {
 
   const result = {};
 
+  const resultMessage = "";
+
   attributes.forEach((attr) => {
-    result[`${attr.name}`] = rollDice(attr.dice)
+    result[`${attr.name}`] = rollDice(attr.dice);
+    resultMessage += `${attr.name}: ${attr.dice} \n`
   })
 
-  io.to(gameId).emit("systemMessage:received", { message: "roll character status is: \n"+result })
+  const message = `roll result is: 
+  ${resultMessage}
+  `
 
-  return result;
+  io.to(gameId).emit("systemMessage:received", { message })
+
+  const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
+
+  return { toolResult: result, messageId: newMessage._id };
 };
 
 const rollCharacterStatusDeclaration = {

@@ -16,6 +16,11 @@ const gameSchema = new Schema({
     ref: "COCCharacter",
   },
   memo: { type: String, default: "" },
+  gameState: { 
+    type: mongoose.Schema.Types.Mixed,
+    default: {}, 
+  },
+  KpMemo: { type: String, default: "" },
   createdAt: {
     type: Date,
     default: Date.now,

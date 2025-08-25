@@ -42,6 +42,18 @@ const createMessage = async (message, role, gameId, userId) => {
     }
 }
 
+const deleteMessage = async (messageId) => {
+    try {
+        await Message.findByIdAndDelete(messageId);
+        console.log("delete message success");
+        return { success: true };
+    } catch (error) {   
+        console.error(`Error ⚠️: fail to delete message ${messageId}: ${error}`)
+        return { success: false, error }
+    }
+}
+
 export default {
     createMessage,
+    deleteMessage,
 }
