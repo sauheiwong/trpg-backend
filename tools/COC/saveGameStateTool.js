@@ -1,5 +1,3 @@
-import Game from '../../models/gameModel.js'
-
 const updateGameStateDeclaration = {
     name: "updateGameState",
     description: "更新遊戲的核心世界狀態，例如角色的HP、位置、物品或世界事實。",
@@ -13,67 +11,105 @@ const updateGameStateDeclaration = {
                 hp: { type: "number", description: "角色新的HP值" },
                 mp: { type: "number", description: "角色新的MP值" },
                 san: { type: "number", description: "角色新的SAN值" },
-                location: { type: "string", description: "角色目前所在的新位置" }
+                location: { type: "string", description: "角色目前所在的新位置" },
+                inventory: {
+                    type: "object",
+                    description: "更新角色物品欄",
+                    properties: {
+                        add: { type: "array", items: { type: "string" }, description: "新增到物品欄的物品列表" },
+                        remove: { type: "array", items: { type: "string" }, description: "從物品欄移除的物品列表" }
+                    }
+                }
             }
         },
         worldUpdates: {
             type: "object",
             description: "關於遊戲世界的更新。",
             properties: {
-                newFact: { type: "string", description: "一個新發現的、需要被記住的世界事實" },
-                npcStatus: { type: "object", description: "更新NPC的狀態" }
+                time: { type: "string", description: "更新遊戲內的時間，例如 '下午3點' 或 '深夜'" },
+                date: { type: "string", description: "更新遊戲內的日期" },
+                weather: { type: "string", description: "描述當前的天氣狀況，例如 '暴雨' 或 '起了濃霧'" },
             }
         }
+        },
+         plotUpdates: {
+            type: "object",
+            description: "更新遊戲劇情和線索的狀態。",
+            properties: {
+                fact: { type: "string", description: "需要被記住的世界級事實或背景設定" },
+                clueDiscovered: {
+                    type: "object",
+                    description: "一個被發現的線索及其內容",
+                    properties: {
+                        id: { type: "string", description: "線索的唯一標識符" },
+                        description: { type: "string", description: "線索的具體內容或指向" }
+                    }
+                },
+                eventTriggered: { type: "string", description: "描述一個被觸發的關鍵劇情事件" },
+                sceneStatusUpdate: {
+                    type: "object",
+                    description: "更新某個特定場景或地點的狀態",
+                    properties: {
+                        locationName: { type: "string", description: "發生變化的地點名稱" },
+                        newStatus: { type: "string", description: "該地點的新狀態，例如 '圖書館的暗門被發現了' 或 '宅邸一樓起火了'" }
+                    }
+                }
+            }
         },
         required: [] // 可以讓所有欄位都是可選的，LLM 只會提供有變化的部分
     }
 }
 
 const updateGameState = async(updates) => {
-    const gameId = updates.gameId;
+    try {
 
-    const updateObject = {};
+        const { characterUpdates, worldUpdates, plotUpdates, game } = updates
 
-    if (updates.characterUpdates) {
-        for (const key in updates.characterUpdates) {
-            updateObject[`gameState.character.${key}`] = updates.characterUpdates[key];
-        }
-    }
+        if (characterUpdates) {
+            game.gameState.character = { ...game.gameState.character, ...characterUpdates };
 
-    if (updates.worldUpdates) {
-        for (const key in updates.worldUpdates) {
-            updateObject[`gameState.world.${key}`] = updates.worldUpdates[key];
-        }
-    }
+            if (characterUpdates.inventory) {
+                if (!Array.isArray(game.gameState.character.inventory)) {
+                    game.gameState.character.inventory = [];
+                }
 
-    await Game.findByIdAndUpdate(gameId, { $set: updateObject })
+                if (characterUpdates.inventory.add?.length > 0) {
+                    game.gameState.character.inventory.push(...characterUpdates.inventory.add);
+                }
 
-    return { result: "success" }
-}
+                if (characterUpdates.inventory.remove?.length > 0) {
+                    const itemsToRemove = new Set(characterUpdates.inventory.remove);
+                    game.gameState.character.inventory = game.gameState.character.inventory.filter(item => !itemsToRemove.has(item));
+                }
 
-const updateKpMemoDeclaration = {
-    name: "updateKpMemo",
-    description: "更新或覆蓋KP的劇情摘要筆記。",
-    parameters: {
-        type: "object",
-        properties: {
-            newSummary: {
-                type: "string",
-                description: "一段新的、完整的劇情摘要，將會覆蓋舊的摘要。"
+                delete game.gameState.character.inventory.add;
+                delete game.gameState.character.inventory.remove;
             }
-        },
-        required: ["newSummary"]
-    }
-}
+        }
 
-const updateKpMemo = async({ gameId, newSummary }) => {
-    await Game.findByIdAndUpdate(gameId, { $set: { KpMemo: newSummary }})
-    return { result: "success" }
+        if (worldUpdates) {
+            game.gameState.world = { ...game.gameState.world, ...worldUpdates };
+        }
+
+        if (plotUpdates) {
+            game.gameState.plot = { ...game.gameState.plot, ...plotUpdates };
+        }
+
+        game.markModified("gameState");
+
+        await game.save();
+
+        console.log("Game state update success!");
+
+        return { result: "success" };
+
+    } catch (error) {
+        console.error("Error ⚠️: fail to update game state: ", error)
+        return { result: "fail", message: error.message }
+    }
 }
 
 export default {
     updateGameStateDeclaration,
     updateGameState,
-    updateKpMemoDeclaration,
-    updateKpMemo,
 };

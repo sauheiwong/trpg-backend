@@ -43,7 +43,7 @@ const getGameById = async (gameId, userId) => {
       .select("role content")
       .exec();
 
-    const character = await COCCharacterModel.findById(game.characterId);
+    const character = await COCCharacterModel.findById(game.characterId).select("-userId -isCompleted -isAvailable -imageUrl -createdAt -updatedAt -__v");
 
     console.log("character id in getGameById is: ", character._id)
 
@@ -52,6 +52,7 @@ const getGameById = async (gameId, userId) => {
       memo: game.memo,
       messages,
       character,
+      game,
     };
   } catch (error) {
     throw error;

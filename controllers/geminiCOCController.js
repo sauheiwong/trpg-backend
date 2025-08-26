@@ -9,8 +9,12 @@ import rollDiceTool from "../tools/COC/rollDiceTool.js";
 import saveCharacterTool from "../tools/COC/saveCharacterTool.js";
 
 import { io } from "../app.js";
+import { buildContextForLLM } from "../tools/COC/buildContextForLLMTool.js";
+import saveGameStateTool from "../tools/COC/saveGameStateTool.js";
+import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 
 const tokenLimit = 10**6;
+const triggerLimit = 10000; // 10K
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
 
@@ -351,15 +355,15 @@ const handlerUserMessageCOCChat = async (data, user) => {
   if (!message || message.length === 0) {
     throw Error("please provide your message.")
   }
-
-  const userNewMessage = await messageHandlers.createMessage(message, "user", gameId, userId);
-
-  const newMessgesId = [userNewMessage._id];
-
-  const { messages, character } = await gameHandlers.getGameById(
+  
+  const { messages, character, game } = await gameHandlers.getGameById(
     gameId,
     userId
   );
+
+  const userNewMessage = await messageHandlers.createMessage(message, "user", gameId, userId);
+
+  const newMessgesId = [userNewMessage._id]; // go to delete if gemini fail
 
   // console.log("character is: ", character);
 
@@ -368,9 +372,13 @@ const handlerUserMessageCOCChat = async (data, user) => {
   try {
     const availableTools = {
       rollSingleDice: rollDiceTool.rollSingleDice,
+      updateGameState: saveGameStateTool.updateGameState
     };
 
-    let functionDeclarations = [rollDiceTool.rollSingleDiceDeclaration];
+    let functionDeclarations = [
+      rollDiceTool.rollSingleDiceDeclaration,
+      // saveGameStateTool.updateGameStateDeclaration,
+    ];
 
     console.log("hasCharacter: ", hasCharacter);
 
@@ -393,33 +401,9 @@ const handlerUserMessageCOCChat = async (data, user) => {
       tools: [{ functionDeclarations }],
     });
 
-    // need to improve to reduce token useage---------------------
+    const contents = buildContextForLLM(game, character, messages, message);
 
-    const processedMessage = [
-      ...[
-        {
-          role: "user",
-          parts: [{ text: startPrompt }],
-        },
-      ],
-      ...messages.map((message) => {
-        return {
-          role: message.role === "model" ? "model" : "user",
-          parts: [{ text: message.content }],
-        };
-      }),
-    ];
-
-    //-------------------------------------------------------------
-
-    const requestContent = {
-      contents: [
-        ...processedMessage,
-        { role: "user", parts: [{ text: message }] }
-      ]
-    }
-
-    const { totalTokens } = await model.countTokens(requestContent);
+    const { totalTokens } = await model.countTokens({ contents });
     console.log("The total token is: ", totalTokens);
     // --------------------------------------------------------------
 
@@ -427,8 +411,12 @@ const handlerUserMessageCOCChat = async (data, user) => {
       throw new Error("Content window is too large, aborting request.");
     }
 
+    if (totalTokens > triggerLimit) {
+      await triggerSummarizationTool.triggerSummarization(game, messages)
+    }
+
     const chat = model.startChat({
-      history: processedMessage,
+      history: contents.slice(0, -1),
     });
 
     let result = await chat.sendMessage(message);
@@ -446,6 +434,7 @@ const handlerUserMessageCOCChat = async (data, user) => {
 
       call.args["userId"] = userId;
       call.args["gameId"] = gameId;
+      call.args["game"] = game;
 
       console.log("model wants to call a function: ", call.name);
       console.log("white arguments: ", call.args);

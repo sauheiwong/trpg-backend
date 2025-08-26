@@ -18,9 +18,17 @@ const gameSchema = new Schema({
   memo: { type: String, default: "" },
   gameState: { 
     type: mongoose.Schema.Types.Mixed,
-    default: {}, 
+    default: {
+      character: {},
+      world: {},
+      plot: {}
+    },
   },
   KpMemo: { type: String, default: "" },
+  lastSummarizedMessageIndex: {
+    type: Number,
+    default: 0, // 遊戲開始時，錨點在第0則訊息之前
+  },
   createdAt: {
     type: Date,
     default: Date.now,
