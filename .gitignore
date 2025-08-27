@@ -2,3 +2,5 @@
 node_modules
 .DS_Store
 .vscode
+
+gcp-service-account-key.json

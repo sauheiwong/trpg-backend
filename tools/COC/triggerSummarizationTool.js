@@ -1,6 +1,4 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import dotenv from "dotenv";
-dotenv.config();
 
 import Game from "../../models/gameModel.js";
 
@@ -27,7 +25,7 @@ const triggerSummarization = async(game, messages) => {
     `
 
     const summaryPrompt = `
-    你是一個TRPG遊戲的紀錄員。請閱讀以下舊的摘要和完整的對話歷史，生成一段新的、精簡的、涵蓋所有關鍵劇情點的摘要。
+    你是一個TRPG遊戲的紀錄員。請閱讀以下舊的摘要和完整的對話歷史，生成一段新的、精簡的、涵蓋所有關鍵劇情點的摘要。同時 1.記下角色總共減少了多少HP, MP和SAN 2. 有什麼NPC 他們和主角的關係 名字
     `
 
     const sumarizerModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });

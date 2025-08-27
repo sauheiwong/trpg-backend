@@ -2,61 +2,62 @@ const updateGameStateDeclaration = {
     name: "updateGameState",
     description: "更新遊戲的核心世界狀態，例如角色的HP、位置、物品或世界事實。",
     parameters: {
-        type: "object",
+        type: "OBJECT", // 習慣上建議用大寫
         properties: {
-        characterUpdates: {
-            type: "object",
-            description: "關於角色的更新。",
-            properties: {
-                hp: { type: "number", description: "角色新的HP值" },
-                mp: { type: "number", description: "角色新的MP值" },
-                san: { type: "number", description: "角色新的SAN值" },
-                location: { type: "string", description: "角色目前所在的新位置" },
-                inventory: {
-                    type: "object",
-                    description: "更新角色物品欄",
-                    properties: {
-                        add: { type: "array", items: { type: "string" }, description: "新增到物品欄的物品列表" },
-                        remove: { type: "array", items: { type: "string" }, description: "從物品欄移除的物品列表" }
+            characterUpdates: {
+                type: "OBJECT",
+                description: "關於角色的更新。",
+                properties: {
+                    hp: { type: "NUMBER", description: "角色新的HP值" },
+                    mp: { type: "NUMBER", description: "角色新的MP值" },
+                    san: { type: "NUMBER", description: "角色新的SAN值" },
+                    location: { type: "STRING", description: "角色目前所在的新位置" },
+                    inventory: {
+                        type: "OBJECT",
+                        description: "更新角色物品欄",
+                        properties: {
+                            add: { type: "ARRAY", items: { type: "STRING" }, description: "新增到物品欄的物品列表" },
+                            remove: { type: "ARRAY", items: { type: "STRING" }, description: "從物品欄移除的物品列表" }
+                        }
+                    }
+                }
+            },
+            worldUpdates: {
+                type: "OBJECT",
+                description: "關於遊戲世界的更新。",
+                properties: {
+                    time: { type: "STRING", description: "更新遊戲內的時間，例如 '下午3點' 或 '深夜'" },
+                    date: { type: "STRING", description: "更新遊戲內的日期" },
+                    weather: { type: "STRING", description: "描述當前的天氣狀況，例如 '暴雨' 或 '起了濃霧'" },
+                }
+            },
+            // 修正點：將 plotUpdates 整個物件移到這裡
+            plotUpdates: {
+                type: "OBJECT",
+                description: "更新遊戲劇情和線索的狀態。",
+                properties: {
+                    fact: { type: "STRING", description: "需要被記住的世界級事實或背景設定" },
+                    clueDiscovered: {
+                        type: "OBJECT",
+                        description: "一個被發現的線索及其內容",
+                        properties: {
+                            id: { type: "STRING", description: "線索的唯一標識符" },
+                            description: { type: "STRING", description: "線索的具體內容或指向" }
+                        }
+                    },
+                    eventTriggered: { type: "STRING", description: "描述一個被觸發的關鍵劇情事件" },
+                    sceneStatusUpdate: {
+                        type: "OBJECT",
+                        description: "更新某個特定場景或地點的狀態",
+                        properties: {
+                            locationName: { type: "STRING", description: "發生變化的地點名稱" },
+                            newStatus: { type: "STRING", description: "該地點的新狀態，例如 '圖書館的暗門被發現了' 或 '宅邸一樓起火了'" }
+                        }
                     }
                 }
             }
         },
-        worldUpdates: {
-            type: "object",
-            description: "關於遊戲世界的更新。",
-            properties: {
-                time: { type: "string", description: "更新遊戲內的時間，例如 '下午3點' 或 '深夜'" },
-                date: { type: "string", description: "更新遊戲內的日期" },
-                weather: { type: "string", description: "描述當前的天氣狀況，例如 '暴雨' 或 '起了濃霧'" },
-            }
-        }
-        },
-         plotUpdates: {
-            type: "object",
-            description: "更新遊戲劇情和線索的狀態。",
-            properties: {
-                fact: { type: "string", description: "需要被記住的世界級事實或背景設定" },
-                clueDiscovered: {
-                    type: "object",
-                    description: "一個被發現的線索及其內容",
-                    properties: {
-                        id: { type: "string", description: "線索的唯一標識符" },
-                        description: { type: "string", description: "線索的具體內容或指向" }
-                    }
-                },
-                eventTriggered: { type: "string", description: "描述一個被觸發的關鍵劇情事件" },
-                sceneStatusUpdate: {
-                    type: "object",
-                    description: "更新某個特定場景或地點的狀態",
-                    properties: {
-                        locationName: { type: "string", description: "發生變化的地點名稱" },
-                        newStatus: { type: "string", description: "該地點的新狀態，例如 '圖書館的暗門被發現了' 或 '宅邸一樓起火了'" }
-                    }
-                }
-            }
-        },
-        required: [] // 可以讓所有欄位都是可選的，LLM 只會提供有變化的部分
+        required: []
     }
 }
 

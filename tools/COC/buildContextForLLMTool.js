@@ -7,7 +7,7 @@ const buildContextForLLM = (game, character, messages, latestMessage) => {
     let initialContextPrompt = "# 遊戲核心狀態\n";
 
     if (character) {
-      initialContextPrompt += `## 角色狀態:\n${JSON.stringify(character)}\n`;
+      initialContextPrompt += `## 角色最初狀態:\n${JSON.stringify(character)}\n`;
     }
     if (game.gameState) {
       initialContextPrompt += `## 世界狀態:\n${JSON.stringify(game.gameState)}\n`;
@@ -44,9 +44,8 @@ const buildContextForLLM = (game, character, messages, latestMessage) => {
     } else {
         contents.push({ role: "user", parts: [{ text: latestMessage }] });
     }
-
-    console.log("contents are: ", contents.slice(0, 10));
-    console.log("first content is: ", contents[0].parts[0].text);
+    
+    // console.log("first content is: ", contents[0].parts[0].text);
 
     return contents;
 }

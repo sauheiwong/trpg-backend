@@ -1,6 +1,4 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import dotenv from "dotenv";
-dotenv.config();
 
 import gameHandlers from "../handlers/gameHandlers.js";
 import messageHandlers from "../handlers/messageHandlers.js";
@@ -10,11 +8,11 @@ import saveCharacterTool from "../tools/COC/saveCharacterTool.js";
 
 import { io } from "../app.js";
 import { buildContextForLLM } from "../tools/COC/buildContextForLLMTool.js";
-import saveGameStateTool from "../tools/COC/saveGameStateTool.js";
+import characterImageTool from "../tools/COC/characterImageTool.js";
 import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 
 const tokenLimit = 10**6;
-const triggerLimit = 10000; // 10K
+const triggerLimit = 15000; // 10K
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
 
@@ -372,12 +370,14 @@ const handlerUserMessageCOCChat = async (data, user) => {
   try {
     const availableTools = {
       rollSingleDice: rollDiceTool.rollSingleDice,
-      updateGameState: saveGameStateTool.updateGameState
+      // updateGameState: saveGameStateTool.updateGameState
+      generateCharacterImage: characterImageTool.generateCharacterImage,
     };
 
     let functionDeclarations = [
       rollDiceTool.rollSingleDiceDeclaration,
       // saveGameStateTool.updateGameStateDeclaration,
+      characterImageTool.generateCharacterImageDeclaration,
     ];
 
     console.log("hasCharacter: ", hasCharacter);
@@ -435,6 +435,7 @@ const handlerUserMessageCOCChat = async (data, user) => {
       call.args["userId"] = userId;
       call.args["gameId"] = gameId;
       call.args["game"] = game;
+      call.args["characterId"] = character._id;
 
       console.log("model wants to call a function: ", call.name);
       console.log("white arguments: ", call.args);

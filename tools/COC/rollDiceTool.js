@@ -30,7 +30,7 @@ const rollDice = (expression) => {
   }
 };
 
-const rollSingleDice = async({ actor, reason, dice, success, gameId, userId }) => {
+const rollSingleDice = async({ actor, reason, dice, success, secret, gameId, userId }) => {
   const rollResult = rollDice(dice);
 
   console.log(`roll dice: ${rollResult.message}, success limit is: ${success}, so ${rollResult.result <= success}`);
@@ -45,7 +45,11 @@ const rollSingleDice = async({ actor, reason, dice, success, gameId, userId }) =
 
   const message = `roll dice: ${rollResult.message}, success limit is: ${success}, so ${rollResult.result <= success ? "SUCCESS" : "FAIL"}`
 
-  io.to(gameId).emit("systemMessage:received", { message })
+  if (!secret){
+    io.to(gameId).emit("systemMessage:received", { message });
+  } else {
+    io.to(gameId).emit("systemMessage:received", { message: "KP roll a secret dice." });
+  }
 
   const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
 
@@ -76,6 +80,10 @@ const rollSingleDiceDeclaration = {
         type: "number",
         description: "行動成功的上限值。擲骰結果必須小於或等於此數值才算成功。"
       },
+      secret: {
+        type: "boolean",
+        description: "暗骰開關。如果為true, 結果就不會向玩家展示。"
+      }
     },
     required: ["actor", "reason", "dice", "success"],
   },

@@ -32,10 +32,6 @@ const characterSchema = new Schema({
       damage: {
         type: String,
       },
-      equipped: {
-        type: Boolean,
-        default: false,
-      },
       description: String,
     },
   ],
