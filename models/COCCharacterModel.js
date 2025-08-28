@@ -11,8 +11,8 @@ const characterSchema = new Schema({
   name: { type: String, required: true, trim: true, default: "New Character" },
   class: { type: String },
   level: { type: Number, default: 1 },
-  hp: { type: Number, required: true },
-  mp: { type: Number, required: true },
+  hp: { max: Number, current: Number },
+  mp: { max: Number, current: Number },
   san: { type: Number, required: true },
   attributes: {
     type: Map,
