@@ -12,7 +12,7 @@ import characterImageTool from "../tools/COC/characterImageTool.js";
 import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 
 const tokenLimit = 10**6;
-const triggerLimit = 15000; // 10K
+const triggerLimit = 10000; // 10K
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
 
@@ -432,13 +432,13 @@ const handlerUserMessageCOCChat = async (data, user) => {
         break;
       }
 
+      console.log("model wants to call a function: ", call.name);
+      console.log("white arguments: ", call.args);
+
       call.args["userId"] = userId;
       call.args["gameId"] = gameId;
       call.args["game"] = game;
       call.args["characterId"] = character._id;
-
-      console.log("model wants to call a function: ", call.name);
-      console.log("white arguments: ", call.args);
 
       const tool = availableTools[call.name];
 

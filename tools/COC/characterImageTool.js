@@ -1,117 +1,150 @@
 import { io } from "../../app.js";
-
-import { VertexAI } from "@google-cloud/vertexai";
 import { Storage } from "@google-cloud/storage";
+import axios from "axios"; // 引入 axios
 
 import Character from "../../models/COCCharacterModel.js";
 import messageHandlers from "../../handlers/messageHandlers.js";
 
-const vertex_ai = new VertexAI({
-    project: "gen-lang-client-0478463521",
-    location: "us-central1"
-})
-const generativeModel = vertex_ai.preview.getGenerativeModel({
-    model: "imagen-3.0-fast-generate-001", // the best one after testing
-})
-
+// 初始化 Google Cloud Storage
 const storage = new Storage({ projectId: "gen-lang-client-0478463521" });
 const bucket = storage.bucket("my-trpg-character-images");
 
-const generateCharacterImage = async({ imagePrompt, characterId, gameId, userId }) => {
+const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId }) => {
+    // 1. 檢查提示詞是否為空
     if (!imagePrompt || imagePrompt.trim() === "") {
         console.error("Error ⚠️: fail to generate an image: empty prompt");
         return { toolResult: {
             result: "error",
-            error: "Failed to generate image due empty prompt",
-        } }
+            error: "Failed to generate image due to empty prompt",
+        }};
     }
 
-    const systemMessage = `Send a request to generate an image. Please wait.`
-
-    const newSystemMessage = await messageHandlers.createMessage(systemMessage, "system", gameId, userId)
-
-    io.to(gameId).emit("systemMessage:received", { systemMessage })
+    // 2. 建立並發送 "生成中..." 的系統訊息
+    const systemMessageContent = `Generating Image. Please wait (Prompt: ${imagePrompt})`;
+    const pendingMessage = await messageHandlers.createMessage(systemMessageContent, "system", gameId, userId);
+    io.to(gameId).emit("systemMessage:received", { message: systemMessageContent});
 
     try {
-        console.log(`[Image Gen] got an image generation request of character ${characterId}`);
-        const request = {
-            contents: [
-                {
-                    parts: [{ text: imagePrompt }]
-                }
-            ],
-        };
+        console.log(`[Image Gen] [Character: ${characterId}] - Starting generation...`);
 
-        const responseStream = await generativeModel.generateContentStream(request);
+        // ==================== 新增的 Stable Diffusion 邏輯 ====================
+
+        // 3. 呼叫 Stability AI API
+        const STABILITY_API_KEY = process.env.STABILITY_API_KEY;
+        const engineId = 'stable-diffusion-xl-1024-v1-0'; // 建議使用較新的 SDXL 模型
+
+        if (!STABILITY_API_KEY) {
+            throw new Error("Missing Stability AI API key in environment variables.");
+        }
         
-        const aggregatedResponse = await responseStream.response;
+        // 增強提示詞，以獲得更好的角色圖片效果
+        const enhancedPrompt = `${imagePrompt}, character portrait, intricate details, high quality`;
+        const negativePrompt = 'blurry, bad art, ugly, deformed, worst quality, low quality';
 
-        const firstCandidate = aggregatedResponse.candidates?.[0];
-        if (!firstCandidate || !firstCandidate.content.parts?.[0] || firstCandidate.content.parts[0].mimeType !== 'image/png') {
-            console.error("Error ⚠️: API response did not contain a valid image.", JSON.stringify(aggregatedResponse));
-            throw new Error("API did not return a valid image.") ;
-        }
-
-        const imageBase64 = firstCandidate.content.parts[0].inlineData.data;
-        console.log(`[Image Gen] image generation success`);
-
-        const imageBuffer = Buffer.from(imageBase64, "base64");
-
-        const fileName = `characters/${characterId}-${Date.now()}.png`;
-        const file = bucket.file(fileName);
-
-        await file.save(imageBuffer, {
-            metadata: {
-                contentType: "image/png",
+        const response = await axios.post(
+            `https://api.stability.ai/v1/generation/${engineId}/text-to-image`,
+            {
+                text_prompts: [
+                    { text: enhancedPrompt, weight: 1 },
+                    { text: negativePrompt, weight: -1 }
+                ],
+                cfg_scale: 7,
+                height: 1024,
+                width: 1024,
+                steps: 30,
+                samples: 1,
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.STABILITY_API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
             }
-        })
+        );
 
-        console.log(`[Image Gen] image has been sent to GCS: ${fileName}`);
-
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-
-        await Character.findByIdAndUpdate(characterId, { imageUrl: publicUrl });
-        console.log(`[Image Gen] character ${characterId} data has been edited in DB.`)
-
-        const payload = {
-            characterId,
-            newImageUrl: publicUrl,
+        const imageArtifact = response.data.artifacts[0];
+        if (!imageArtifact) {
+            throw new Error('No image artifact returned from Stability AI API.');
         }
 
-        // io.to(gameId).emit("characterImageUpdated", payload);
-        console.log(`[Image Gen] character image has been sent to game room ${gameId}`);
+        // 4. 將 Base64 圖片數據轉換為 Buffer
+        const buffer = Buffer.from(imageArtifact.base64, 'base64');
+        const fileName = `characters/${characterId}-${Date.now()}.png`;
+        
+        // 5. 上傳圖片到 Google Cloud Storage
+        console.log(`[Image Gen] Uploading image to GCS at ${fileName}`);
+        const file = bucket.file(fileName);
+        
+        await new Promise((resolve, reject) => {
+            const stream = file.createWriteStream({
+                metadata: { contentType: 'image/png' },
+                resumable: false,
+            });
+            stream.on('finish', resolve);
+            stream.on('error', (err) => reject(err));
+            stream.end(buffer);
+        });
+        
+        const imageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+        console.log(`[Image Gen] Image successfully uploaded. URL: ${imageUrl}`);
+
+        // 6. 更新資料庫中的角色圖片 URL
+        await Character.findByIdAndUpdate(characterId, {
+            $set: { imageUrl }
+        });
+        console.log(`[Image Gen] Character ${characterId} image URL updated in database.`);
+
+        // 7. 更新系統訊息，並通知前端
+        const successMessageContent = `成功生成角色圖片！\n![角色圖片](${imageUrl})`;
+        await messageHandlers.createMessage(successMessageContent, "system", gameId, userId);
+        
+        // 發送更新後的訊息物件到前端
+        io.to(gameId).emit("systemMessage:received", { message: successMessageContent});
+        
+        // 額外發送一個特定事件，方便前端直接更新角色卡等 UI 元件
+        io.to(gameId).emit("characterImage:updated", {
+            characterId: characterId,
+            imageUrl: imageUrl,
+        });
+
+        // ======================================================================
 
         return { toolResult: {
             result: "success",
-        }, 
-        messageId: newSystemMessage._id };
+            imageUrl: imageUrl, // 在 toolResult 中也回傳 URL
+        }};
         
     } catch (error) {
-        console.error("Error ⚠️: fail to generate an image: ", error);
-        messageHandlers.deleteMessage(newSystemMessage._id);
+        console.error("Error ⚠️: fail to generate an image: ", error.response ? error.response.data : error.message);
+        
+        // 如果生成失敗，刪除 "生成中..." 的訊息
+        await messageHandlers.deleteMessage(pendingMessage._id);
+        io.to(gameId).emit("message:deleted", { messageId: pendingMessage._id });
+
         return { toolResult: {
             result: "error",
             error: "Failed to generate image due to an internal API error or quota issue.",
             details: error.message,
         }};
     }
-
 }
 
+// 函式聲明保持不變
 const generateCharacterImageDeclaration = {
     name: "generateCharacterImage",
-    description: "生成角色形象圖",
+    description: "生成角色形象圖。當玩家想要為某個角色創建一張視覺圖片時使用。",
     parameters: {
         type: "object",
         properties: {
             imagePrompt: {
-                type: "STRING",
-                description: "生成角色形象圖的提示詞。"
+                type: "string", // Gemini API 中 STRING 通常是大寫
+                description: "用於生成角色形象圖的詳細英文描述，例如 'A young female detective with short black hair, wearing a trench coat, standing on a rainy street in the 1920s, film noir style.'"
             }
         },
         required: ["imagePrompt"]
     }
-}
+};
 
 export default {
     generateCharacterImage,
