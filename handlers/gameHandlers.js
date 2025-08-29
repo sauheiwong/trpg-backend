@@ -45,8 +45,6 @@ const getGameById = async (gameId, userId) => {
 
     const character = await COCCharacterModel.findById(game.characterId).select("-userId -isCompleted -isAvailable -createdAt -updatedAt -__v");
 
-    console.log("character id in getGameById is: ", character._id)
-
     return {
       title: game.title,
       memo: game.memo,

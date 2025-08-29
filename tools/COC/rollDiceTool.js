@@ -104,11 +104,11 @@ const rollCharacterStatus = async({ gameId, userId }) => {
 
   const result = {};
 
-  const resultMessage = "";
+  let resultMessage = "";
 
   attributes.forEach((attr) => {
     result[`${attr.name}`] = rollDice(attr.dice);
-    resultMessage += `${attr.name}: ${attr.dice} \n`
+    resultMessage += `${attr.name}: ${result[`${attr.name}`].result} \n`
   })
 
   const message = `roll result is: 

@@ -3,13 +3,14 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import gameHandlers from "../handlers/gameHandlers.js";
 import messageHandlers from "../handlers/messageHandlers.js";
 
-import rollDiceTool from "../tools/COC/rollDiceTool.js";
-import saveCharacterTool from "../tools/COC/saveCharacterTool.js";
-
 import { io } from "../app.js";
 import { buildContextForLLM } from "../tools/COC/buildContextForLLMTool.js";
+
+import rollDiceTool from "../tools/COC/rollDiceTool.js";
+import saveCharacterTool from "../tools/COC/saveCharacterTool.js";
 import characterImageTool from "../tools/COC/characterImageTool.js";
 import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
+import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
 
 const tokenLimit = 10**6;
 const triggerLimit = 10000; // 10K
@@ -100,207 +101,6 @@ const systemPrompt = (userLanguage, haveCharacter) => {
 `;
 };
 
-const chatWithGeminiNew = async (req, res) => {
-  const userId = req.user._id;
-
-  //   return res.status(200).send({
-  //     message: `歡迎，探索者。很高興你能加入這場冒險。
-
-  // 在我們潛入那不可名狀的恐懼之前，讓我們先為這次探索建立一個基礎。請告訴我：
-
-  // 1.  **故事的時代背景**：你希望這次冒險發生在什麼年代？是爵士樂盛行的咆0年代、維多利亞時代的霧都、還是更為 現代的時空？
-  // 2.  **故事發生的地點**：故事將會在何處展開？是一個偏遠而詭異的鄉村、一座歷史悠久的大城市、還是一個孤立無援的小島？
-  // 3.  **你的角色概念**：你希望扮演一個什麼樣的人物？是敏銳的偵探、博學的學者、手藝精湛的藝術家、還是樸實的普通市民？請給我一個大致的方向。
-  // 4.  **你偏好的恐怖類型**：你希望這次冒險主要偏向哪種恐怖？是強調宇宙宏大與人類渺小的「宇宙恐怖」、深掘內心陰影與精神崩潰的「心理恐怖」、還是有更多血腥與生理不適的「肉體恐怖」？
-
-  // 請慢慢思考，你的選擇將塑造我們共同編織的噩夢。
-  //         `,
-  //     gameId: "123123123",
-  //   });
-
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      systemInstruction: systemPrompt(req.user.language, false),
-    });
-
-    const chat = model.startChat({
-      history: [],
-    });
-
-    const result = await chat.sendMessage(startPrompt);
-    const modelResponseText = result.response.text();
-
-    console.log("Model Response Text: ", modelResponseText);
-
-    const game = await gameHandlers.createGame(userId);
-
-    // await messageHandlers.createMessage(startPrompt, "user", game._id, userId);
-
-    await messageHandlers.createMessage(
-      modelResponseText,
-      "model",
-      game._id,
-      userId
-    );
-
-    return res
-      .status(200)
-      .send({ message: modelResponseText, gameId: game._id });
-  } catch (error) {
-    console.error("Error ⚠️: fail to call Gemini API: ", error);
-    return res
-      .status(500)
-      .send({ message: "fail to get response from AI, please try later" });
-  }
-};
-
-const chatWithGeminiById = async (req, res) => {
-  const gameId = req.params.id;
-  const userId = req.user._id;
-  const userMessage = req.body.message;
-  const role = req.body.role || "user";
-
-  if (!userMessage || userMessage.length === 0) {
-    return res.status(400).send({ message: "please provide your message" });
-  }
-
-  const { messages, characterId } = await gameHandlers.getGameById(
-    gameId,
-    userId
-  );
-
-  const hasCharacter = characterId ? true : false;
-  // const hasCharacter = true;
-
-  const processedMessage = [
-    ...[
-      {
-        role: "user",
-        parts: [{ text: startPrompt }],
-      },
-    ],
-    ...messages.map((message) => {
-      return {
-        role: message.role === "model" ? "model" : "user",
-        parts: [{ text: message.content }],
-      };
-    }),
-  ];
-
-  // return res.status(200).send({
-  //   message: `got your message`,
-  // });
-
-  try {
-    const availableTools = {
-      rollSingleDice: rollDiceTool.rollSingleDice,
-    };
-
-    let functionDeclarations = [rollDiceTool.rollSingleDiceDeclaration];
-
-    console.log("hasCharacter: ", hasCharacter);
-
-    if (!hasCharacter) {
-      availableTools["saveCharacterStatus"] =
-        saveCharacterTool.saveCharacterStatus;
-      availableTools["rollCharacterStatus"] = rollDiceTool.rollCharacterStatus;
-      functionDeclarations = [
-        ...functionDeclarations,
-        ...[
-          rollDiceTool.rollCharacterStatusDeclaration,
-          saveCharacterTool.saveCharacterStatusDeclaration,
-        ],
-      ];
-    }
-
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      systemInstruction: systemPrompt(req.user.language, hasCharacter),
-      tools: [{ functionDeclarations }],
-    });
-
-    const chat = model.startChat({
-      history: processedMessage,
-    });
-
-    let result = await chat.sendMessage(userMessage);
-
-    // return res.status(200).send({ result });
-
-    let newCharacter = null;
-
-    while (true) {
-      const call =
-        result.response.candidates[0]?.content?.parts[0]?.functionCall;
-
-      if (!call) {
-        break;
-      }
-
-      call.args["userId"] = userId;
-      call.args["chatId"] = gameId;
-
-      console.log("model wants to call a function: ", call.name);
-      console.log("white arguments: ", call.args);
-
-      const tool = availableTools[call.name];
-
-      if (!tool) {
-        throw errorStatus(`function ${call.name} not found`, 500);
-      }
-
-      const toolResult = await tool(call.args);
-
-      console.log("function execution result: ", toolResult);
-
-      if (toolResult.newCharacter) {
-        newCharacter = toolResult.newCharacter;
-      }
-
-      result = await chat.sendMessage([
-        {
-          functionResponse: {
-            name: call.name,
-            response: {
-              content: String(toolResult.message),
-            },
-          },
-        },
-      ]);
-    }
-
-    const modelResponseText = result.response.text();
-
-    console.log("Model Response Text: ", modelResponseText);
-
-    if (role === "system") {
-      await messageHandlers.createMessage(
-        req.body.userMessage,
-        "user",
-        gameId,
-        userId
-      );
-    }
-
-    await messageHandlers.createMessage(userMessage, role, gameId, userId);
-
-    await messageHandlers.createMessage(
-      modelResponseText,
-      "model",
-      gameId,
-      userId
-    );
-
-    return res.status(200).send({ message: modelResponseText, newCharacter });
-  } catch (error) {
-    console.error("Error ⚠️: fail to call Gemini API: ", error);
-    return res
-      .status(500)
-      .send({ message: "fail to get response from AI, please try later" });
-  }
-};
-
 const handlerNewCOCChat = async (socket) => {
   console.log("gemini start to run 🤖")
   const userId = socket.user._id;
@@ -371,26 +171,33 @@ const handlerUserMessageCOCChat = async (data, user) => {
     const availableTools = {
       rollSingleDice: rollDiceTool.rollSingleDice,
       // updateGameState: saveGameStateTool.updateGameState
-      generateCharacterImage: characterImageTool.generateCharacterImage,
     };
 
     let functionDeclarations = [
       rollDiceTool.rollSingleDiceDeclaration,
       // saveGameStateTool.updateGameStateDeclaration,
-      characterImageTool.generateCharacterImageDeclaration,
     ];
 
     console.log("hasCharacter: ", hasCharacter);
 
     if (!hasCharacter) {
-      availableTools["saveCharacterStatus"] =
-        saveCharacterTool.saveCharacterStatus;
+      availableTools["saveCharacterStatus"] = saveCharacterTool.saveCharacterStatus;
       availableTools["rollCharacterStatus"] = rollDiceTool.rollCharacterStatus;
       functionDeclarations = [
         ...functionDeclarations,
         ...[
           rollDiceTool.rollCharacterStatusDeclaration,
           saveCharacterTool.saveCharacterStatusDeclaration,
+        ],
+      ];
+    } else {
+      availableTools["generateCharacterImage"] = characterImageTool.generateCharacterImage;
+      availableTools["updateCharacterStats"] = updateCharacterStatsTool.updateCharacterStats;
+      functionDeclarations = [
+        ...functionDeclarations,
+        ...[
+          characterImageTool.generateCharacterImageDeclaration,
+          updateCharacterStatsTool.updateCharacterStatsDeclaration,
         ],
       ];
     }
@@ -438,7 +245,7 @@ const handlerUserMessageCOCChat = async (data, user) => {
       call.args["userId"] = userId;
       call.args["gameId"] = gameId;
       call.args["game"] = game;
-      call.args["characterId"] = character._id;
+      call.args["characterId"] = character?._id || null;
 
       const tool = availableTools[call.name];
 
@@ -489,8 +296,6 @@ const handlerUserMessageCOCChat = async (data, user) => {
 }
 
 export default {
-  chatWithGeminiNew,
-  chatWithGeminiById,
   handlerNewCOCChat,
   handlerUserMessageCOCChat,
 };

@@ -25,9 +25,12 @@ const saveCharacterStatus = async (infor) => {
     characterId: newCharacter._id,
   });
 
-  io.to(gameId).emit("systemMessage:received", { message: "save character success" })
+  io.to(infor.gameId).emit("systemMessage:received", { message: "save character success" })
 
-  return { message: "save success", newCharacter };
+  return { toolResult : {
+    result: "success",
+    character: newCharacter
+  } };
 };
 
 const saveCharacterStatusDeclaration = {
@@ -73,6 +76,10 @@ const saveCharacterStatusDeclaration = {
           },
         },
         required: ["max", "current"],
+      },
+      san: {
+        type: "number",
+        description: "角色的SAN值"
       },
       attributes: {
         type: "array",
@@ -152,6 +159,7 @@ const saveCharacterStatusDeclaration = {
       "class",
       "hp",
       "mp",
+      "san",
       "attributes",
       "skills",
       "description",

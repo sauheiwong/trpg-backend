@@ -32,22 +32,6 @@ router.get("/api/user", requireAuth, userController.getUser);
 router.put("/api/user", requireAuth, userController.editUser);
 
 // gemini
-router.get("/api/gemini", requireAuth, geminiCOCController.chatWithGeminiNew);
-
-router.post(
-  "/api/gemini/:id",
-  requireAuth,
-  geminiCOCController.chatWithGeminiById
-);
-
-// gemini
-router.get("/api/gemini", requireAuth, geminiCOCController.chatWithGeminiNew);
-
-router.post(
-  "/api/gemini/:id",
-  requireAuth,
-  geminiCOCController.chatWithGeminiById
-);
 
 router.get(
   "/api/dnd/gemini",
