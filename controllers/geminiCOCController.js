@@ -11,9 +11,12 @@ import saveCharacterTool from "../tools/COC/saveCharacterTool.js";
 import characterImageTool from "../tools/COC/characterImageTool.js";
 import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
+import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
+
+import characterImagen3Tool from "../tools/COC/characterImagen3Tool.js";
 
 const tokenLimit = 10**6;
-const triggerLimit = 10000; // 10K
+const triggerLimit = 15000; // 15K
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
 
@@ -26,7 +29,7 @@ const systemPrompt = (userLanguage, haveCharacter) => {
   "profile": {
     "identity": "專業、友善且高效的《克蘇魯的呼喚》TRPG 守密人 (KP)。",
     "primary_task": "引導玩家完成充滿未知、恐怖和瘋狂的冒險，並根據他們的行動推動劇情。",
-    "communication_style": "清晰、簡潔，善於用側面描寫和細節營造懸疑恐怖的氣氛。"
+    "communication_style": "清晰、簡潔，善於用側面描寫和細節營造懸疑恐怖的氣氛。嚴格遵守《克蘇魯的呼喚》的規則，特別是何時擲骰方面。"
   },
   "core_gameplay_loop": [
     "1. 聆聽與澄清：仔細聆聽玩家的行動描述。若描述模糊（如『我用工具』），必須追問細節（『什麼工具？』）以確保行動合理可行。",
@@ -192,12 +195,16 @@ const handlerUserMessageCOCChat = async (data, user) => {
       ];
     } else {
       availableTools["generateCharacterImage"] = characterImageTool.generateCharacterImage;
+      // availableTools["generateCharacterImage"] = characterImagen3Tool.generateCharacterImage;
       availableTools["updateCharacterStats"] = updateCharacterStatsTool.updateCharacterStats;
+      availableTools["generateBackgroundImage"] = backgroundImageTool.generateBackgroundImage;
       functionDeclarations = [
         ...functionDeclarations,
         ...[
           characterImageTool.generateCharacterImageDeclaration,
+          // characterImagen3Tool.generateCharacterImageDeclaration,
           updateCharacterStatsTool.updateCharacterStatsDeclaration,
+          backgroundImageTool.generateBackgroundImageDeclaration,
         ],
       ];
     }

@@ -29,6 +29,14 @@ const gameSchema = new Schema({
     type: Number,
     default: 0, // 遊戲開始時，錨點在第0則訊息之前
   },
+  currentBackgroundImage: {
+    type: String,
+    default: ""
+  },
+  backgroundImages: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -33,6 +33,12 @@ const updateCharacterStats = async ({ characterId, hp, mp, san, gameId, userId }
 
     // 發送系統訊息
     io.to(gameId).emit("systemMessage:received", { message });
+    io.to(gameId).emit("updateCharacterStats:received", { 
+        characterId, 
+        hp: character.hp.current,
+        mp: character.mp.current,
+        san: character.san,
+      })
 
     return {
       toolResult: {
@@ -59,7 +65,7 @@ const updateCharacterStats = async ({ characterId, hp, mp, san, gameId, userId }
 
 const updateCharacterStatsDeclaration = {
   name: "updateCharacterStats",
-  description: "更新 TRPG 角色的 HP、MP 和 SAN 屬性，並確保數值不超過最大值或低於 0。",
+  description: "當需要更新 TRPG 角色的 HP、MP 和 SAN 屬性時自行使用，並確保數值不超過最大值或低於 0。",
   parameters: {
     type: "object",
     properties: {
