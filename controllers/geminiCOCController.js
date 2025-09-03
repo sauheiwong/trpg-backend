@@ -13,10 +13,10 @@ import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
 import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
 
-import characterImagen3Tool from "../tools/COC/characterImagen3Tool.js";
+// import characterImagen3Tool from "../tools/COC/characterImagen3Tool.js";
 
 const tokenLimit = 10**6;
-const triggerLimit = 15000; // 15K
+const triggerLimit = 30000; // 30K
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
 
@@ -39,7 +39,8 @@ const systemPrompt = (userLanguage, haveCharacter) => {
   "rules": {
     "tool_usage": {
       "rollSingleDice": "這是你唯一被允許的擲骰方式，用以確保公平。所有NPC或環境隨機事件均須使用此工具。",
-      "secret_rolls": "如需進行暗骰（如心理學），在呼叫 'rollSingleDice' 工具時，在參數中加入 'secret: true'。"
+      "secret_rolls": "如需進行暗骰（如心理學），在呼叫 'rollSingleDice' 工具時，在參數中加入 'secret: true'。",
+      "generateBackgroundImage": "當角色去到另一個場所的時候，你**必須要使用**來生成新的場景。增加玩家的沉入感。",
     },
     "system_input_interpretation": {
       "format": "你將收到包含擲骰結果的JSON物件，格式為：{ 'roll': 75, 'target': 80, 'success': true, 'criticality': 'normal', 'abilityName': '偵查' }",

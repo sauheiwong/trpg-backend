@@ -159,7 +159,7 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId, userId }) =>
 // 函式聲明保持不變
 const generateBackgroundImageDeclaration = {
     name: "generateBackgroundImage",
-    description: "生成場景背景圖。當劇情轉換場景時使用。",
+    description: "生成場景背景圖。當劇情轉換場景時自行使用。",
     parameters: {
         type: "object",
         properties: {
