@@ -1,4 +1,5 @@
 import { io } from "../../app.js";
+import { Type } from "@google/genai";
 
 import messageHandlers from "../../handlers/messageHandlers.js";
 
@@ -44,11 +45,12 @@ const rollSingleDice = async({ actor, reason, dice, success, secret, gameId, use
   }
 
   const message = `roll dice: ${rollResult.message}, success limit is: ${success}, so ${rollResult.result <= success ? "SUCCESS" : "FAIL"}`
+  const followingMessage = "Gemini is handling the result..."
 
   if (!secret){
-    io.to(gameId).emit("systemMessage:received", { message });
+    io.to(gameId).emit("systemMessage:received", { message, followingMessage });
   } else {
-    io.to(gameId).emit("systemMessage:received", { message: "KP roll a secret dice." });
+    io.to(gameId).emit("systemMessage:received", { message: "KP roll a secret dice.", followingMessage });
   }
 
   const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
@@ -61,27 +63,27 @@ const rollSingleDiceDeclaration = {
   description:
     "為遊戲中的一個角色擲骰。只適用於處理一次檢定或計算的場景。不適用於角色生成時。",
   parameters: {
-    type: "object",
+    type: Type.OBJECT,
     properties: {
       actor: {
-        type: "string",
+        type: Type.STRING,
         description: "擲骰的角色名稱。例如：'邪教徒A'、'玩家B'。",
       },
       reason: {
-        type: "string",
+        type: Type.STRING,
         description: "本次擲骰的原因或目的。例如：'理智檢定'、'手槍射擊'。",
       },
       dice: {
-        type: "string",
+        type: Type.STRING,
         description:
           "要擲的骰子表達式，格式為 'NdM+X'。例如：'1d100'、'1d8+1'。",
       },
       success: {
-        type: "number",
+        type: Type.NUMBER,
         description: "行動成功的上限值。擲骰結果必須小於或等於此數值才算成功。"
       },
       secret: {
-        type: "boolean",
+        type: Type.BOOLEAN,
         description: "暗骰開關。如果為true, 結果就不會向玩家展示。"
       }
     },
@@ -90,6 +92,7 @@ const rollSingleDiceDeclaration = {
 };
 
 const rollCharacterStatus = async({ gameId, userId }) => {
+
   const attributes = [
     { name: "力量 (STR)", dice: "(3d6)*5" },
     { name: "體質 (CON)", dice: "(3d6)*5" },
@@ -114,11 +117,12 @@ const rollCharacterStatus = async({ gameId, userId }) => {
   const message = `roll result is: 
   ${resultMessage}
   `
-
-  io.to(gameId).emit("systemMessage:received", { message })
+  const followingMessage = "Gemini is handling the result"
 
   const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
 
+  io.to(gameId).emit("systemMessage:received", { message, followingMessage })
+  
   return { toolResult: result, messageId: newMessage._id };
 };
 

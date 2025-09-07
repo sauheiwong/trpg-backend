@@ -10,6 +10,8 @@ export const socketAuthMiddleware = async (socket, next) => {
         return next(new Error("Authentication error: Token note provided"));
     }
 
+    // console.log(token);
+
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
         const user = await User.findById(decoded.id).select('-password');

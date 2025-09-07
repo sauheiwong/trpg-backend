@@ -9,9 +9,9 @@ const buildContextForLLM = (game, character, messages, latestMessage) => {
     if (character) {
       initialContextPrompt += `## 角色最初狀態:\n${JSON.stringify(character)}\n`;
     }
-    if (game.gameState) {
-      initialContextPrompt += `## 世界狀態:\n${JSON.stringify(game.gameState)}\n`;
-    }
+    // if (game.gameState) {
+    //   initialContextPrompt += `## 世界狀態:\n${JSON.stringify(game.gameState)}\n`;
+    // }
     // 修正大小寫：KPmemo
     if (game.KpMemo && game.KpMemo.trim() !== "") {
         initialContextPrompt += `# 故事至此的摘要:\n${game.KpMemo}\n`;

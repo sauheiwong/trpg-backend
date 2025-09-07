@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 import gameHandlers from "../handlers/gameHandlers.js";
 import messageHandlers from "../handlers/messageHandlers.js";
@@ -12,6 +13,7 @@ import characterImageTool from "../tools/COC/characterImageTool.js";
 import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
 import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
+import { response } from "express";
 
 // import characterImagen3Tool from "../tools/COC/characterImagen3Tool.js";
 
@@ -19,6 +21,9 @@ const tokenLimit = 10**6;
 const triggerLimit = 30000; // 30K
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API });
+const LLM_NAME = "gemini-2.5-flash";
 
 const startPrompt = `由現在開始，我是玩家，以下是我的開場白: 「你是誰? 這是什麼遊戲? 我們要做什麼?」`;
 
@@ -43,7 +48,6 @@ const systemPrompt = (userLanguage, haveCharacter) => {
       "generateBackgroundImage": "當角色去到另一個場所的時候，你**必須要使用**來生成新的場景。增加玩家的沉入感。",
     },
     "system_input_interpretation": {
-      "format": "你將收到包含擲骰結果的JSON物件，格式為：{ 'roll': 75, 'target': 80, 'success': true, 'criticality': 'normal', 'abilityName': '偵查' }",
       "response_structure": {
         "step_1_header": "必須在回覆的【第一行】生成「結果標頭」，格式為：'【<能力名稱>檢定：<擲骰結果>/<目標值> -> <成功/失敗/大成功/大失敗>】'。範例：【偵查檢定：75/80 -> 成功】。",
         "step_2_narrative": "在標頭後【換行】，開始撰寫詳細的劇情描述。敘事中應避免重複提及成功/失敗或具體數字，要將結果完全融入故事。"
@@ -111,17 +115,15 @@ const handlerNewCOCChat = async (socket) => {
   const userLanguage = socket.user.language;
 
   try{
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      systemInstruction: systemPrompt(userLanguage, false),
-    });
+    const result = await ai.models.generateContent({
+        model: LLM_NAME,
+        contents: startPrompt,
+        config: { 
+          systemInstruction: systemPrompt(userLanguage, false),
+         }
+      })
 
-    const chat = model.startChat({
-      history: [],
-    });
-
-    const result = await chat.sendMessage(startPrompt);
-    const modelResponseText = result.response.text();
+    const modelResponseText = result.text;
 
     console.log("Model Response Text: ", modelResponseText);
 
@@ -155,7 +157,8 @@ const handlerUserMessageCOCChat = async (data, user) => {
   const userId = user._id;
   const language = user.language;
   if (!message || message.length === 0) {
-    throw Error("please provide your message.")
+    io.to(gameId).emit("message:error", { error: { message: "empty input" } })
+    return;
   }
   
   const { messages, character, game } = await gameHandlers.getGameById(
@@ -210,15 +213,15 @@ const handlerUserMessageCOCChat = async (data, user) => {
       ];
     }
     // count token-------------------------------------------------
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      systemInstruction: systemPrompt(language, hasCharacter),
-      tools: [{ functionDeclarations }],
-    });
-
     const contents = buildContextForLLM(game, character, messages, message);
 
-    const { totalTokens } = await model.countTokens({ contents });
+    const countTokensResponse = await ai.models.countTokens({
+      model: LLM_NAME,
+      contents: contents,
+    })
+
+    const totalTokens = countTokensResponse.totalTokens;
+
     console.log("The total token is: ", totalTokens);
     // --------------------------------------------------------------
 
@@ -230,72 +233,83 @@ const handlerUserMessageCOCChat = async (data, user) => {
       await triggerSummarizationTool.triggerSummarization(game, messages)
     }
 
-    const chat = model.startChat({
-      history: contents.slice(0, -1),
-    });
-
-    let result = await chat.sendMessage(message);
-
     const MAX_TURNS = 5;
     for (let i = 0; i < MAX_TURNS; i++) {
       console.log("start checking model used function call or not.")
-      const call =
-        result.response.candidates[0]?.content?.parts[0]?.functionCall;
+      const result = await ai.models.generateContent({
+        model: LLM_NAME,
+        contents: contents,
+        config: { 
+          tools: [{ functionDeclarations }],
+          systemInstruction: systemPrompt(language, hasCharacter),
+         }
+      })
 
-      if (!call) {
+      if (result.functionCalls && result.functionCalls.length > 0){
+        const functionCall = result.functionCalls[0];
+
+        console.log(`functionCall is: ${JSON.stringify(functionCall)}`)
+
+        const { name, args } = functionCall;
+
+        if (!availableTools[name]) {
+          throw new Error("unknown function call: ", name);
+        }
+
+        console.log("model wants to call a function: ", name);
+        console.log("white arguments: ", args);
+
+        args["userId"] = userId;
+        args["gameId"] = gameId;
+        args["game"] = game;
+        args["characterId"] = character?._id || null;
+
+        const { toolResult, messageId } = await availableTools[name](args);
+
+        newMessgesId.push(messageId);
+
+        console.log("function execution result: ", toolResult);
+
+        contents.push({
+          role: "model",
+          parts: [{
+            functionCall: functionCall
+          }]
+        })
+
+        contents.push({
+          role: "user",
+          parts: [{
+            functionResponse: {
+              name,
+              response: toolResult,
+            }
+          }]
+        })
+
+      } else {
         console.log("model don't have use function call.")
-        break;
+        const modelResponseText = result.text;
+        console.log("Model Resonse Text: ", modelResponseText);
+
+        if (!modelResponseText || modelResponseText.trim() === "" ) {
+          console.error("Error ⚠️: Gemini returned an empty response.");
+          throw new Error("Gemini returned an empty response");
+        }
+
+        console.log("Gemini Response Text is valid, saving messages to DB...")
+
+        await messageHandlers.createMessage(
+          modelResponseText,
+          "model",
+          gameId,
+          userId
+        );
+
+        io.to(gameId).emit("message:received", { message: modelResponseText, role: "model" });
+        return;
       }
-
-      console.log("model wants to call a function: ", call.name);
-      console.log("white arguments: ", call.args);
-
-      call.args["userId"] = userId;
-      call.args["gameId"] = gameId;
-      call.args["game"] = game;
-      call.args["characterId"] = character?._id || null;
-
-      const tool = availableTools[call.name];
-
-      if (!tool) {
-        throw errorStatus(`function ${call.name} not found`, 500);
-      }
-
-      const { toolResult, messageId } = await tool(call.args);
-
-      newMessgesId.push(messageId)
-
-      console.log("function execution result: ", toolResult);
-
-      result = await chat.sendMessage([
-        {
-          functionResponse: {
-            name: call.name,
-            response: toolResult,
-          },
-        },
-      ]);
     }
-
-    const modelResponseText = result.response.text();
-
-    console.log("Model Response Text: ", modelResponseText);
-
-    if (!modelResponseText || modelResponseText.trim() === "" ) {
-      console.error("Error ⚠️: Gemini returned an empty response.");
-      throw new Error("Gemini returned an empty response");
-    }
-
-    console.log("Gemini Response Text is valid, saving messages to DB...")
-
-    await messageHandlers.createMessage(
-      modelResponseText,
-      "model",
-      gameId,
-      userId
-    );
-
-    io.to(gameId).emit("message:received", { message: modelResponseText, role: "model" });
   } catch (error) {
     console.error("Error ⚠️: fail to call Gemini API: ", error);
     io.to(gameId).emit("message:error", { error: "Error ⚠️: fail to call Gemini API", originalMessage: message })

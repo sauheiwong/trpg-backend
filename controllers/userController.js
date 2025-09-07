@@ -99,8 +99,9 @@ const editUser = async (req, res) => {
   const { name, language } = req.body;
   try {
     await userHandler.edit(name, language, req.user._id);
+    return res.status(200).send({ message: "ok" })
   } catch (error) {
-    return status(500).send({ message: error });
+    return res.status(500).send({ message: error });
   }
 };
 
