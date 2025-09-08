@@ -180,6 +180,16 @@ const getAvailableCharacter = async (name, userId) => {
   }
 };
 
+const addUsedTokenGameById = async (gameId, usedToken) => {
+  try {
+    await Game.findByIdAndUpdate(gameId, 
+      { $inc: { usedToken: usedToken } }   
+    )
+  } catch (error) {
+    throw error;
+  }
+}
+
 export default {
   createGame,
   getGameById,
@@ -188,4 +198,5 @@ export default {
   deleteGameById,
   getCharacterByGameId,
   getAvailableCharacter,
+  addUsedTokenGameById,
 };

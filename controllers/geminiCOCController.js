@@ -13,7 +13,6 @@ import characterImageTool from "../tools/COC/characterImageTool.js";
 import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
 import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
-import { response } from "express";
 
 // import characterImagen3Tool from "../tools/COC/characterImagen3Tool.js";
 
@@ -244,6 +243,12 @@ const handlerUserMessageCOCChat = async (data, user) => {
           systemInstruction: systemPrompt(language, hasCharacter),
          }
       })
+
+      const usedToken = result.usageMetadata.totalTokenCount;
+
+      console.log("usedToken is: ", usedToken);
+
+      await gameHandlers.addUsedTokenGameById(gameId, usedToken);
 
       if (result.functionCalls && result.functionCalls.length > 0){
         const functionCall = result.functionCalls[0];

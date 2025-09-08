@@ -71,7 +71,7 @@ const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId
             console.log(`[Image Gen] Character ${characterId} image URL updated in database.`);
 
             // 7. 更新系統訊息，並通知前端
-            const successMessageContent = `成功生成角色圖片！\n![角色圖片](${imageUrl})`;
+            const successMessageContent = `Success to generate an avatar of your character！\n![角色圖片](${imageUrl})`;
             await messageHandlers.createMessage(successMessageContent, "system", gameId, userId);
             
             // 發送更新後的訊息物件到前端

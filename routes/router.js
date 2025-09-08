@@ -4,11 +4,11 @@ import passport from "passport";
 import userController from "../controllers/userController.js";
 import gameCOCController from "../controllers/gameCOCController.js";
 import gameDNDController from "../controllers/gameDNDController.js";
-import geminiCOCController from "../controllers/geminiCOCController.js";
+// import geminiCOCController from "../controllers/geminiCOCController.js";
 import geminiDNDController from "../controllers/geminiDNDController.js";
 // import geminiCharacterController from "../controllers/geminiCOCCharacterController.js";
 import rollDiceController from "../controllers/rollDiceController.js";
-import COCCharacterController from "../controllers/COCCharacterController.js";
+// import COCCharacterController from "../controllers/COCCharacterController.js";
 // import characterChatController from "../controllers/characterChatController.js";
 
 export const router = Router();
@@ -53,17 +53,17 @@ router.get("/api/game", requireAuth, gameCOCController.getGame);
 
 router.get("/api/game/:id", requireAuth, gameCOCController.getGameById);
 
-router.get(
-  "/api/coc/characters",
-  requireAuth,
-  gameCOCController.getAvailableCharacter
-);
+// router.get(
+//   "/api/coc/characters",
+//   requireAuth,
+//   gameCOCController.getAvailableCharacter
+// );
 
-router.get(
-  "/api/game/character/:id",
-  requireAuth,
-  gameCOCController.getCharacterByGameId
-);
+// router.get(
+//   "/api/game/character/:id",
+//   requireAuth,
+//   gameCOCController.getCharacterByGameId
+// );
 
 router.put("/api/game/:id", requireAuth, gameCOCController.editGameById);
 

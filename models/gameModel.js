@@ -37,6 +37,10 @@ const gameSchema = new Schema({
     type: mongoose.Schema.Types.Mixed,
     default: {}
   },
+  usedToken: {
+    type: Number,
+    default: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now,
