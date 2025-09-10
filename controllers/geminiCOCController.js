@@ -20,6 +20,14 @@ const MAX_RETRIES = 5
 const INITAIL_DELAY_MS = 1000;
 const LLM_NAME = "gemini-2.5-flash";
 
+const retryMessages = {
+  "0": "Brewing a little more coffee... Gemini is giving it another shot! ☕",
+  "1": "Hmm, that didn't quite work. Gemini is trying a different angle! 🤔",
+  "2": "Whoops, a little turbulence! Rerouting the connection now... ✈️",
+  "3": "Just a moment! Gemini is tightening some digital screws... 🔩",
+  "4": "It looks like our Gemini KP is facing some stubborn network issues. \nWe've made several attempts to resolve it automatically. \nCould you please try again shortly?🙇‍♀️ \nOur team has been alerted if the issue persists."
+}
+
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API });
 
 const startPrompt = `由現在開始，我是玩家，以下是我的開場白: 「你是誰? 這是什麼遊戲? 我們要做什麼?」`;
@@ -230,86 +238,116 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       await triggerSummarizationTool.triggerSummarization(game, messages)
     }
 
-    for (let i = 0; i < MAX_TURNS; i++) {
-      console.log("start checking model used function call or not.")
-      const result = await ai.models.generateContent({
-        model: LLM_NAME,
-        contents: contents,
-        config: { 
-          tools: [{ functionDeclarations }],
-          systemInstruction: systemPrompt(language, hasCharacter),
-         }
-      })
-
-      const usedToken = result.usageMetadata.totalTokenCount;
-
-      console.log("usedToken is: ", usedToken);
-
-      await gameHandlers.addUsedTokenGameById(gameId, usedToken);
-
-      if (result.functionCalls && result.functionCalls.length > 0){
-        const functionCall = result.functionCalls[0];
-
-        console.log(`functionCall is: ${JSON.stringify(functionCall)}`)
-
-        const { name, args } = functionCall;
-
-        if (!availableTools[name]) {
-          throw new Error("unknown function call: ", name);
-        }
-
-        console.log("model wants to call a function: ", name);
-        console.log("white arguments: ", args);
-
-        args["userId"] = userId;
-        args["gameId"] = gameId;
-        args["game"] = game;
-        args["characterId"] = character?._id || null;
-
-        const { toolResult, messageId } = await availableTools[name](args);
-
-        newMessgesId.push(messageId);
-
-        console.log("function execution result: ", toolResult);
-
-        contents.push({
-          role: "model",
-          parts: [{
-            functionCall: functionCall
-          }]
-        })
-
-        contents.push({
-          role: "user",
-          parts: [{
-            functionResponse: {
-              name,
-              response: toolResult,
+    // retry system
+    let lastError = null;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++){
+      console.log(`Gemini API ${attempt + 1} try`);
+      try {
+        // Gemini agent system
+        for (let i = 0; i < MAX_TURNS; i++) {
+          console.log("start checking model used function call or not.")
+          const result = await ai.models.generateContent({
+            model: LLM_NAME,
+            contents: contents,
+            config: { 
+              tools: [{ functionDeclarations }],
+              systemInstruction: systemPrompt(language, hasCharacter),
             }
-          }]
-        })
+          })
 
-      } else {
-        console.log("model don't have use function call.")
-        const modelResponseText = result.text;
-        console.log("Model Resonse Text: ", modelResponseText);
+          const usedToken = result.usageMetadata.totalTokenCount;
 
-        if (!modelResponseText || modelResponseText.trim() === "" ) {
-          console.error("Error ⚠️: Gemini returned an empty response.");
-          throw new Error("Gemini returned an empty response");
+          console.log("usedToken is: ", usedToken);
+
+          await gameHandlers.addUsedTokenGameById(gameId, usedToken);
+
+          if (result.functionCalls && result.functionCalls.length > 0){
+            const functionCall = result.functionCalls[0];
+
+            console.log(`functionCall is: ${JSON.stringify(functionCall)}`)
+
+            const { name, args } = functionCall;
+
+            if (!availableTools[name]) {
+              throw new Error("unknown function call: ", name);
+            }
+
+            console.log("model wants to call a function: ", name);
+            console.log("white arguments: ", args);
+
+            args["userId"] = userId;
+            args["gameId"] = gameId;
+            args["game"] = game;
+            args["characterId"] = character?._id || null;
+
+            const { toolResult, messageId } = await availableTools[name](args);
+
+            newMessgesId.push(messageId);
+
+            console.log("function execution result: ", toolResult);
+
+            contents.push({
+              role: "model",
+              parts: [{
+                functionCall: functionCall
+              }]
+            })
+
+            contents.push({
+              role: "user",
+              parts: [{
+                functionResponse: {
+                  name,
+                  response: toolResult,
+                }
+              }]
+            })
+
+          } else {
+            console.log("model don't have use function call.")
+            const modelResponseText = result.text;
+            console.log("Model Resonse Text: ", modelResponseText);
+
+            if (!modelResponseText || modelResponseText.trim() === "" ) {
+              console.error("Error ⚠️: Gemini returned an empty response.");
+              throw new Error("Gemini returned an empty response");
+            }
+
+            console.log("Gemini Response Text is valid, saving messages to DB...")
+
+            await messageHandlers.createMessage(
+              modelResponseText,
+              "model",
+              gameId,
+              userId
+            );
+
+            io.to(gameId).emit("message:received", { message: modelResponseText, role: "model" });
+            return;
+          }
         }
+      } catch (error) {
+        lastError = error;
+        if (error.message.includes("500") || error.message.includes("503")) {
+          if (attempt === MAX_RETRIES - 1) {
+            console.error("Error ⚠️: Gemini API meet max retries. Stop retry");
+            io.to(gameId).emit("message:error", { error: retryMessages[`${attempt}`] })
+            break;
+          }
+          io.to(gameId).emit("systemMessage:received", { message: retryMessages[`${attempt}`], keepLoading: true })
 
-        console.log("Gemini Response Text is valid, saving messages to DB...")
+          const delay = INITAIL_DELAY_MS * Math.pow(2, attempt);
+          const jitter = Math.random() * 1000;
+          const waitTime = delay + jitter;
 
-        await messageHandlers.createMessage(
-          modelResponseText,
-          "model",
-          gameId,
-          userId
-        );
+          console.log(`Gemini API Error in ${attempt + 1} try: Error ⚠️: ${error.message}`);
+          console.log(`Retry 🤦 at ${(waitTime / 1000).toFixed(2)} second later`);
 
-        io.to(gameId).emit("message:received", { message: modelResponseText, role: "model" });
-        return;
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          console.log(`Non retry Error ⚠️: ${error.message}`);
+          throw error
+        }
       }
     }
   } catch (error) {

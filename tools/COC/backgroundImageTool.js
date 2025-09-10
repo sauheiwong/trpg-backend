@@ -98,7 +98,7 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId, userId }) =>
             })
 
             // 7. 更新系統訊息，並通知前端
-            const successMessageContent = `Success to generate a background image! \n ![background](${imageUrl})
+            const successMessageContent = `Success to generate a background image!\n![background](${imageUrl})
             `;
             await messageHandlers.createMessage(successMessageContent, "system", gameId, userId);
 

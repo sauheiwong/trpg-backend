@@ -30,7 +30,7 @@ const triggerSummarization = async(game, messages) => {
     `
 
     const summaryPrompt = `
-    你是一個TRPG遊戲的紀錄員。請閱讀以下舊的摘要和完整的對話歷史，生成一段新的、精簡的、涵蓋所有關鍵劇情點的摘要。同時記下有什麼NPC 他們和主角的關係 名字
+    你是一個TRPG遊戲的紀錄員。請閱讀以下舊的摘要和完整的對話歷史，生成一段新的、精簡的、涵蓋所有關鍵劇情點的摘要，要包括故事的目標、地點、時代、NPC、NPC們與主角的關係和名字
     `
 
     const sumarizerModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
