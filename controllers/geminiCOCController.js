@@ -1,4 +1,3 @@
-// import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GoogleGenAI } from "@google/genai";
 
 import gameHandlers from "../handlers/gameHandlers.js";
@@ -14,15 +13,14 @@ import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
 import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
 
-// import characterImagen3Tool from "../tools/COC/characterImagen3Tool.js";
-
 const tokenLimit = 10**6;
 const triggerLimit = 30000; // 30K
-
-// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
+const MAX_TURNS = 5;
+const MAX_RETRIES = 5
+const INITAIL_DELAY_MS = 1000;
+const LLM_NAME = "gemini-2.5-flash";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API });
-const LLM_NAME = "gemini-2.5-flash";
 
 const startPrompt = `由現在開始，我是玩家，以下是我的開場白: 「你是誰? 這是什麼遊戲? 我們要做什麼?」`;
 
@@ -44,7 +42,7 @@ const systemPrompt = (userLanguage, haveCharacter) => {
     "tool_usage": {
       "rollSingleDice": "這是你唯一被允許的擲骰方式，用以確保公平。所有NPC或環境隨機事件均須使用此工具。",
       "secret_rolls": "如需進行暗骰（如心理學），在呼叫 'rollSingleDice' 工具時，在參數中加入 'secret: true'。",
-      "generateBackgroundImage": "當角色去到另一個場所的時候，你**必須要使用**來生成新的場景。增加玩家的沉入感。",
+      "generateBackgroundImage": "當角色去到另一個場所的時候，你**必須立即使用**來生成新的場景。增加玩家的沉入感。",
     },
     "system_input_interpretation": {
       "response_structure": {
@@ -63,7 +61,7 @@ const systemPrompt = (userLanguage, haveCharacter) => {
     "atmosphere": "核心是未知恐怖。絕對禁止直呼神話生物或舊日支配者之名。使用環境暗示、感官細節、異常現象營造氛圍，強調玩家在未知面前的渺小與無力。",
     "character_control": "嚴守玩家代理權，絕不替玩家角色（PC）做任何決定。你控制所有非玩家角色（NPC），並使其行動符合其性格動機。"
   },
-  "language": "${userLanguage}"
+  "language": "**${userLanguage}**"
 }
                     `;
   return ` 
@@ -103,7 +101,7 @@ const systemPrompt = (userLanguage, haveCharacter) => {
       "interest": "INT*2"
     }
   },
-  "language": "${userLanguage}"
+  "language": "**${userLanguage}**"
 }
 `;
 };
@@ -173,8 +171,6 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
   const newMessgesId = [userNewMessage._id]; // go to delete if gemini fail
 
-  // console.log("character is: ", character);
-
   const hasCharacter = character ? true : false;
 
   try {
@@ -202,14 +198,12 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       ];
     } else {
       availableTools["generateCharacterImage"] = characterImageTool.generateCharacterImage;
-      // availableTools["generateCharacterImage"] = characterImagen3Tool.generateCharacterImage;
       availableTools["updateCharacterStats"] = updateCharacterStatsTool.updateCharacterStats;
       availableTools["generateBackgroundImage"] = backgroundImageTool.generateBackgroundImage;
       functionDeclarations = [
         ...functionDeclarations,
         ...[
           characterImageTool.generateCharacterImageDeclaration,
-          // characterImagen3Tool.generateCharacterImageDeclaration,
           updateCharacterStatsTool.updateCharacterStatsDeclaration,
           backgroundImageTool.generateBackgroundImageDeclaration,
         ],
@@ -236,7 +230,6 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       await triggerSummarizationTool.triggerSummarization(game, messages)
     }
 
-    const MAX_TURNS = 5;
     for (let i = 0; i < MAX_TURNS; i++) {
       console.log("start checking model used function call or not.")
       const result = await ai.models.generateContent({

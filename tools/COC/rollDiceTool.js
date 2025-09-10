@@ -94,15 +94,15 @@ const rollSingleDiceDeclaration = {
 const rollCharacterStatus = async({ gameId, userId }) => {
 
   const attributes = [
-    { name: "力量 (STR)", dice: "(3d6)*5" },
-    { name: "體質 (CON)", dice: "(3d6)*5" },
-    { name: "體型 (SIZ)", dice: "(2d6+6)*5" },
-    { name: "敏捷 (DEX)", dice: "(3d6)*5" },
-    { name: "外貌 (APP)", dice: "(3d6)*5" },
-    { name: "智力 (INT)", dice: "(2d6+6)*5" },
-    { name: "意志 (POW)", dice: "(3d6)*5" },
-    { name: "教育 (EDU)", dice: "(2d6+6)*5" },
-    { name: "幸運 (LUCK)", dice: "(3d6)*5" },
+    { name: "STR", dice: "(3d6)*5" },
+    { name: "CON", dice: "(3d6)*5" },
+    { name: "SIZ", dice: "(2d6+6)*5" },
+    { name: "DEX", dice: "(3d6)*5" },
+    { name: "APP", dice: "(3d6)*5" },
+    { name: "INT", dice: "(2d6+6)*5" },
+    { name: "POW", dice: "(3d6)*5" },
+    { name: "EDU", dice: "(2d6+6)*5" },
+    { name: "LUCK", dice: "(3d6)*5" },
   ];
 
   const result = {};
