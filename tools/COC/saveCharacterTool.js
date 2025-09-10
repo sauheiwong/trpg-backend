@@ -32,7 +32,8 @@ const saveCharacterStatus = async (infor) => {
 
   return { toolResult : {
     result: "success",
-    character: newCharacter
+    character: newCharacter,
+    message: "please ask player 'do they want to generate an avatar of their character?'"
   } };
 };
 

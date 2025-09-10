@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GoogleGenAI } from "@google/genai";
 
 import gameHandlers from "../handlers/gameHandlers.js";
@@ -19,7 +19,7 @@ import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
 const tokenLimit = 10**6;
 const triggerLimit = 30000; // 30K
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
+// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API);
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API });
 const LLM_NAME = "gemini-2.5-flash";
@@ -120,7 +120,7 @@ const handlerNewCOCChat = async (socket) => {
         config: { 
           systemInstruction: systemPrompt(userLanguage, false),
          }
-      })
+    })
 
     const modelResponseText = result.text;
 
@@ -151,7 +151,8 @@ const handlerNewCOCChat = async (socket) => {
   }
 }
 
-const handlerUserMessageCOCChat = async (data, user) => {
+const handlerUserMessageCOCChat = async (data, user, role) => {
+  console.log("Gemini start reading")
   const { gameId, message } = data;
   const userId = user._id;
   const language = user.language;
@@ -159,13 +160,16 @@ const handlerUserMessageCOCChat = async (data, user) => {
     io.to(gameId).emit("message:error", { error: { message: "empty input" } })
     return;
   }
+  // console.log("gemini got message from user with gameId", gameId);
+  // io.to(gameId).emit("message:received", { message: "got your message "+ message, role: "model" });
+  // return;
   
   const { messages, character, game } = await gameHandlers.getGameById(
     gameId,
     userId
   );
 
-  const userNewMessage = await messageHandlers.createMessage(message, "user", gameId, userId);
+  const userNewMessage = await messageHandlers.createMessage(message, role, gameId, userId);
 
   const newMessgesId = [userNewMessage._id]; // go to delete if gemini fail
 
@@ -317,7 +321,7 @@ const handlerUserMessageCOCChat = async (data, user) => {
     }
   } catch (error) {
     console.error("Error ⚠️: fail to call Gemini API: ", error);
-    io.to(gameId).emit("message:error", { error: "Error ⚠️: fail to call Gemini API", originalMessage: message })
+    io.to(gameId).emit("message:error", { error: "Error ⚠️: fail to call Gemini API \n If you are trying to ask Gemini to roll a dice, please type '/roll XdY', which X is the number of dice and Y is the number of faces of the dice, to roll dice.", originalMessage: message })
     newMessgesId.forEach((messageId) => messageHandlers.deleteMessage(messageId));
   }
 }

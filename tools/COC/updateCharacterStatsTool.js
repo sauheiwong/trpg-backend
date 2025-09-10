@@ -28,7 +28,7 @@ const updateCharacterStats = async ({ characterId, hp, mp, san, gameId, userId }
     await character.save();
 
     // 建立系統訊息
-    const message = `角色 ${character.name} 屬性更新: HP ${character.hp.current}/${character.hp.max}, MP ${character.mp.current}/${character.mp.max}, SAN ${character.san}`;
+    const message = `Character ${character.name} update: HP ${character.hp.current}/${character.hp.max}, MP ${character.mp.current}/${character.mp.max}, SAN ${character.san}`;
     const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
 
     // 發送系統訊息

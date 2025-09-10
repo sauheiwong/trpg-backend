@@ -1,5 +1,10 @@
-const rollDice = (req, res) => {
+import { io } from "../app.js";
+import messageHandlers from "../handlers/messageHandlers.js";
+import geminiCOCController from "./geminiCOCController.js";
+
+const rollDice = async(req, res) => {
   const dice = req.body.dice; // e.g., '2d6', 'd20', '1d10+1', '2d8-2'
+  const gameId = req.body.gameId;
 
   const diceRegex = /^(\d*)d(\d+)\s*([+-]\s*\d+)?$/i;
 
@@ -29,7 +34,23 @@ const rollDice = (req, res) => {
       total += modifier;
     }
 
-    return res.status(200).send({ message: result.slice(1), total });
+    const message = `Player Rolled a 🎲 ${dice} : ${result.slice(1)} => ${total}`
+
+    await messageHandlers.createMessage(
+      `/roll ${dice}`,
+      "user",
+      gameId,
+      req.user._id
+    )
+
+    console.log("roll result: ", message)
+
+    io.to(gameId).emit("systemMessage:received", { message, followingMessage: "Gemini is handling the result...🖋️" });
+
+    geminiCOCController.handlerUserMessageCOCChat({ message, gameId }, req.user, "system")
+
+    return res.status(200).send({ message: "ok" });
+    
   } catch (error) {
     return res.status(400).send({ message: "Invalid dice format" });
   }

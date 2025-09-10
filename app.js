@@ -69,7 +69,7 @@ io.on("connection", (socket) => {
 
     socket.on("sendMessage", (data) => {
         console.log(`Player ${socket.user.username} sent a message ${data.message} to gemini in room ${data.gameId}`);
-        geminiCOCController.handlerUserMessageCOCChat(data, socket.user);
+        geminiCOCController.handlerUserMessageCOCChat(data, socket.user, 'user');
     })
 
 
