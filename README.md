@@ -1,57 +1,64 @@
-# LLM-TRPG Backend Service
+# Project Proposal: An LLM-Powered Interactive Tabletop RPG Platform
 
-This is the backend service for the LLM Interactive Tabletop Role-Playing Game (TRPG) project, developed with Node.js and the Express.js framework. It is responsible for handling all game logic, user data management, and interacting with the Large Language Model (Gemini API).
+Student Name: Sau Hei Wong Date: September 17, 2025
 
-## Phase 1 Implemented Features
+1. Abstract
 
-The goal of this phase was to establish a stable and smooth single-player core game loop. The following features have been completed:
+- This project aims to design, develop, and deploy an immersive Tabletop Role-Playing Game (TRPG) platform powered by a Large Language Model (LLM). The application will function as an "AI Game Master" (AI GM), interacting with players through natural language to dynamically generate compelling narratives, scenes, and challenges. Traditional TRPGs often present a high barrier to entry due to the need for a human GM and schedule coordination. This project addresses this pain point by creating an accessible, highly personalized, and endlessly replayable single-player adventure experience, making the joy of TRPGs more readily available.
 
--   **User Authentication**: Provides user registration, login, and identity verification functions.
--   **Game Management**: Supports creating new games, fetching a list of historical games, and loading a specific game's progress.
--   **Core Dialogue System**: Integrates with the Google Gemini API to receive player dialogue input and generate game narrative responses.
--   **Dialogue History**: All conversations between players and the AI GM are saved to the database, ensuring that game progress can be resumed at any time.
--   **Manual Dice Rolling Mechanism**: Provides a dedicated API endpoint to handle various dice roll formats (e.g., `d20`, `2d6`, `1d10+1`).
--   **Multi-language Support**: Can store and manage user language preferences.
+2. Project Goals & Motivation
 
-## API Endpoints
+Tabletop RPGs, such as Call of Cthulhu and Dungeons & Dragons, offer unparalleled freedom in collaborative storytelling but can be challenging to organize. The primary motivation for this project is to leverage modern AI technology to lower the barrier to entry for TRPGs.
+The key objectives include:
 
-Below are the main API endpoints that have been established:
+- Apply Full-Stack Skills: To implement the full-stack development knowledge acquired during the bootcamp, covering frontend, backend, database design, and real-time communication technologies.
 
--   `POST /api/register`: Register a new user.
--   `POST /api/login`: User login.
--   `GET /api/game`: Get all games for the current user.
--   `GET /api/gemini`: Create a new game.
--   `GET /api/game/:id`: Load details and dialogue history for a specific game.
--   `POST /api/gemini/:id`: Send a new message in a specific game.
--   `POST /api/roll`: Perform a dice roll based on a formula.
--   `GET /api/user`: Get user settings (e.g., language).
--   `PUT /api/user`: Update user settings (e.g., language).
+- Integrate Cutting-Edge AI: To explore and apply a large language model (the Gemini API) in a creative, generative capacity, building an application with truly dynamic narrative capabilities.
 
-## Tech Stack
+- Solve a Real-World Problem: To provide an innovative solution for the TRPG community, enabling solo play and simplifying the organization of multiplayer games.
 
--   **Framework**: Node.js, Express.js
--   **Database**: MongoDB with Mongoose
--   **Authentication**: Passport.js with JWT
--   **LLM**: Google Gemini API
--   **Environment Variable Management**: dotenv
+- Deliver a Complete Product: To deliver a fully functional and polished software application, showcasing skills across the entire software development lifecycle, from design to deployment.
 
-## Installation and Startup
+3. Target Audience
 
-1.  **Install Dependencies**
-    ```bash
-    npm install
-    ```
+- TRPG Newcomers: Individuals interested in learning and experiencing TRPGs in a low-pressure environment.
 
-2.  **Set Environment Variables**
-    Create a `.env` file in the project root directory and fill in the necessary environment variables:
-    ```
-    MONGO_URI=your_mongodb_connection_string
-    GEMINI_API_KEY=your_gemini_api_key
-    JWT_SECRET=your_jwt_secret
-    ```
+- Experienced TRPG Players: Veterans looking for a solo-play option or a way to continue adventuring between their regular group sessions.
 
-3.  **Start the Server**
-    ```bash
-    npm start
-    ```
-    The server will run on `http://localhost:3000` by default.
+- Game Masters (GMs): GMs who can use the platform for story inspiration or to playtest new adventure modules.
+
+- Creative Writers & Storytellers: Users seeking an interactive narrative tool to spark creativity and explore story ideas.
+
+4. Core Features
+
+This application will focus on delivering a complete and polished single-player experience, with core features including:
+Dynamic Story Generation: The AI GM will create unique storylines in real-time based on player input, character backgrounds, and established game rules.
+
+- Natural Language Interaction: Players will communicate their actions and intentions to the AI GM using conversational language.
+  Character Creation & Management: Players can create and manage their character sheets, including attributes, skills, inventory, and status, which will directly influence game outcomes.
+
+- Integrated Dice Mechanics: The AI will understand when dice rolls are necessary and generate logical, dramatic, and context-aware outcomes based on the results (including successes, failures, and criticals).
+
+- AI-Powered Image Generation: To enhance immersion, the system will generate visuals for key scenes, characters, or locations, either automatically or triggered by the player.
+
+5. Project Scope & Future Outlook
+
+The scope of this capstone project is to deliver a polished and feature-complete single-player TRPG platform, encompassing all the core features listed above.
+
+- Future Outlook (Out of Scope for this Project): The application's architecture will be designed with future scalability in mind. After the successful delivery of the single-player mode, the primary path for expansion will be the implementation of a real-time multiplayer mode. This would leverage the planned WebSocket technology to allow multiple players to join the same game session. This feature is a future goal for the project and will not be part of the capstone deliverable.
+
+6. Technology Stack
+
+- Backend: Node.js, Express.js
+
+- Database: MongoDB
+
+- Web Frontend: Vue.js
+
+- Mobile App: React Native
+
+- Real-time Communication: WebSockets (via Socket.IO) - Architecture for future multiplayer expansion
+
+- Story Generation AI: Google Gemini API
+
+- Image Generation AI: Google Imagen API
