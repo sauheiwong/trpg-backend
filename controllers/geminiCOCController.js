@@ -332,7 +332,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
           if (attempt === MAX_RETRIES - 1) {
             console.error("Error ⚠️: Gemini API meet max retries. Stop retry");
             io.to(gameId).emit("message:error", { error: retryMessages[`${attempt}`] })
-            break;
+            throw new Error ("Error ⚠️: Gemini fail to use function call🤦")
           }
           io.to(gameId).emit("systemMessage:received", { message: retryMessages[`${attempt}`], keepLoading: true })
 
