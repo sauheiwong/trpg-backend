@@ -5,8 +5,19 @@ import { Type, GoogleGenAI } from "@google/genai";
 import Character from "../../models/COCCharacterModel.js";
 import messageHandlers from "../../handlers/messageHandlers.js";
 
+let config = {};
+
+if (process.env.GCP_CREDENTIALS_JSON) {
+  try {
+    config.credentials = JSON.parse(process.env.GCP_CREDENTIALS_JSON);
+  } catch (e) {
+    console.error("Error parsing GCP credentials JSON:", e);
+  }
+}
+
+
 // 初始化 Google Cloud Storage
-const storage = new Storage({ projectId: "gen-lang-client-0478463521" });
+const storage = new Storage(config);
 const bucket = storage.bucket("my-trpg-character-images");
 
 const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId }) => {
