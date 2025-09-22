@@ -30,7 +30,7 @@ const retryMessages = {
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API });
 
-const startPrompt = `由現在開始，我是玩家，以下是我的開場白: 「你是誰? 這是什麼遊戲? 我們要做什麼?」`;
+const startPrompt = `Start, please introduce yourself and what the game is?`;
 
 const systemPrompt = (userLanguage, haveCharacter) => {
   if (haveCharacter)
