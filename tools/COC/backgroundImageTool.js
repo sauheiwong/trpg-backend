@@ -57,8 +57,8 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId, userId }) =>
     }
 
     // 2. 建立並發送 "生成中..." 的系統訊息
-    const systemMessageContent = `Generating Image. Please wait \n (Prompt: ${imagePrompt})`;
-    const pendingMessage = await messageHandlers.createMessage(systemMessageContent, "system", gameId, userId);
+    const systemMessageContent = `generateBackgroundImage: ${imagePrompt}`;
+    // const pendingMessage = await messageHandlers.createMessage(systemMessageContent, "system", gameId, userId);
     io.to(gameId).emit("systemMessage:received", { message: systemMessageContent, followingMessage: "Gemini is drawing now...🖌️" });
 
     try {
@@ -109,14 +109,14 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId, userId }) =>
             })
 
             // 7. 更新系統訊息，並通知前端
-            const successMessageContent = `Success to generate a background image!\n![background](${imageUrl})
-            `;
-            await messageHandlers.createMessage(successMessageContent, "system", gameId, userId);
+            // const successMessageContent = `Success to generate a background image!\n![background](${imageUrl})
+            // `;
+            // await messageHandlers.createMessage(successMessageContent, "system", gameId, userId);
 
 
             
             // 發送更新後的訊息物件到前端
-            io.to(gameId).emit("systemMessage:received", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing..."});
+            // io.to(gameId).emit("systemMessage:received", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing..."});
             
             // 額外發送一個特定事件，方便前端直接更新角色卡等 UI 元件
             io.to(gameId).emit("backgroundImage:updated", {
@@ -135,7 +135,7 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId, userId }) =>
         console.error("Error ⚠️: fail to generate an image: ", error.response ? error.response.data : error.message);
         
         // 如果生成失敗，刪除 "生成中..." 的訊息
-        await messageHandlers.deleteMessage(pendingMessage._id);
+        // await messageHandlers.deleteMessage(pendingMessage._id);
         // io.to(gameId).emit("message:deleted", { messageId: pendingMessage._id });
 
         return { toolResult: {

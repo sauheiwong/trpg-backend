@@ -40,10 +40,9 @@ const getGameById = async (gameId, userId) => {
       gameId: game._id,
     })
       .sort({ timestamp: 1 })
-      .select("role content")
       .exec();
 
-    const character = await COCCharacterModel.findById(game.characterId).select("-userId -isCompleted -isAvailable -createdAt -updatedAt -__v");
+    const character = await COCCharacterModel.findById(game.characterId);
 
     return {
       title: game.title,

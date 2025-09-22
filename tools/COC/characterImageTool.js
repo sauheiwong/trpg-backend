@@ -31,8 +31,8 @@ const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId
     }
 
     // 2. 建立並發送 "生成中..." 的系統訊息
-    const systemMessageContent = `Generating Image. Please wait (Prompt: ${imagePrompt})`;
-    const pendingMessage = await messageHandlers.createMessage(systemMessageContent, "system", gameId, userId);
+    const systemMessageContent = `generateCharacterImage: ${imagePrompt})`;
+    // const pendingMessage = await messageHandlers.createMessage(systemMessageContent, "system", gameId, userId);
     io.to(gameId).emit("systemMessage:received", { message: systemMessageContent, followMessage: "Gemini is drawing now...🖌️"});
 
     try {
@@ -107,8 +107,8 @@ const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId
         console.error("Error ⚠️: fail to generate an image: ", error.response ? error.response.data : error.message);
         
         // 如果生成失敗，刪除 "生成中..." 的訊息
-        await messageHandlers.deleteMessage(pendingMessage._id);
-        io.to(gameId).emit("message:deleted", { messageId: pendingMessage._id });
+        // await messageHandlers.deleteMessage(pendingMessage._id);
+        // io.to(gameId).emit("message:deleted", { messageId: pendingMessage._id });
 
         return { toolResult: {
             result: "error",

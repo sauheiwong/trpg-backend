@@ -44,7 +44,7 @@ const rollSingleDice = async({ actor, reason, dice, success, secret, gameId, use
     success: rollResult.result <= success,
   }
 
-  const message = `roll dice: ${rollResult.message}, success limit is: ${success}, so ${rollResult.result <= success ? "SUCCESS" : "FAIL"}`
+  const message = `rollSingleDice: ${JSON.stringify(responseData)}, success limit is: ${success}, so ${rollResult.result <= success ? "SUCCESS" : "FAIL"}`
   const followingMessage = "Gemini is handling the result..."
 
   if (!secret){
@@ -53,9 +53,9 @@ const rollSingleDice = async({ actor, reason, dice, success, secret, gameId, use
     io.to(gameId).emit("systemMessage:received", { message: "KP roll a secret dice.", followingMessage });
   }
 
-  const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
+  // const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
 
-  return { toolResult: responseData, messageId: newMessage._id };
+  return { toolResult: responseData };
 };
 
 const rollSingleDiceDeclaration = {
@@ -114,16 +114,16 @@ const rollCharacterStatus = async({ gameId, userId }) => {
     resultMessage += `${attr.name}: ${result[`${attr.name}`].result} \n`
   })
 
-  const message = `roll result is: 
-  ${resultMessage}
+  const message = `rollCharacterStatus result is: 
+  ${JSON.stringify(resultMessage)}
   `
   const followingMessage = "Gemini is handling the result"
 
-  const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
+  // const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
 
   io.to(gameId).emit("systemMessage:received", { message, followingMessage })
   
-  return { toolResult: result, messageId: newMessage._id };
+  return { toolResult: result };
 };
 
 const rollCharacterStatusDeclaration = {

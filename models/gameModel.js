@@ -37,9 +37,10 @@ const gameSchema = new Schema({
     type: mongoose.Schema.Types.Mixed,
     default: {}
   },
-  usedToken: {
-    type: Number,
-    default: 0
+  tokenUsage: {
+    inputTokens: { type: Number, default: 0 },
+    outputTokens: { type: Number, default: 0 },
+    totalTokens: { type: Number, default: 0 },
   },
   createdAt: {
     type: Date,

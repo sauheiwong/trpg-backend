@@ -3,6 +3,9 @@ import { GoogleGenAI } from "@google/genai";
 import gameHandlers from "../handlers/gameHandlers.js";
 import messageHandlers from "../handlers/messageHandlers.js";
 
+import messageModel from "../models/messageModel.js";
+import gameModel from "../models/gameModel.js";
+
 import { io } from "../app.js";
 import { buildContextForLLM } from "../tools/COC/buildContextForLLMTool.js";
 
@@ -12,6 +15,7 @@ import characterImageTool from "../tools/COC/characterImageTool.js";
 import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
 import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
+import { model } from "mongoose";
 
 const tokenLimit = 10**6;
 const triggerLimit = 30000; // 30K
@@ -132,15 +136,31 @@ const handlerNewCOCChat = async (socket) => {
 
     console.log("Model Response Text: ", modelResponseText);
 
+    const { promptTokenCount, candidatesTokenCount, totalTokenCount, thoughtsTokenCount } = result.usageMetadata;
+
+    console.log(`input_tokens: ${promptTokenCount} | output_tokens: ${candidatesTokenCount} | thoughtsTokenCount: ${thoughtsTokenCount} | totak_tokens: ${totalTokenCount}`)
+
     const game = await gameHandlers.createGame(userId);
     const gameId = game._id;
-
-    await messageHandlers.createMessage(
-      modelResponseText,
-      "model",
+    
+    await messageModel.create({
       gameId,
-      userId
-    );
+      message_type: "model_text_response",
+      role: "model",
+      content: modelResponseText,
+      usage: {
+        inputTokens: promptTokenCount,
+        outputTokens: candidatesTokenCount + thoughtsTokenCount,
+      }
+    })
+
+    await gameModel.findByIdAndUpdate(gameId, {
+      $inc: {
+        "tokenUsage.inputTokens": promptTokenCount,
+        "tokenUsage.outputTokens": candidatesTokenCount + thoughtsTokenCount,
+        "tokenUsage.totalTokens": totalTokenCount,
+      }
+    })
 
     socket.emit("game:created", {
       message: modelResponseText,
@@ -149,6 +169,7 @@ const handlerNewCOCChat = async (socket) => {
     
     socket.join(gameId);
     console.log(`player ${socket.user.username} join game room ${gameId}`)
+
   } catch (error) {
     console.error("Error ⚠️ in handlerNewCOCChat: fail to call Gemini API: ", error);
     socket.emit("game:createError", {
@@ -175,7 +196,14 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
     userId
   );
 
-  const userNewMessage = await messageHandlers.createMessage(message, role, gameId, userId);
+  // const userNewMessage = await messageHandlers.createMessage(message, role, gameId, userId);
+
+  const userNewMessage = await messageModel.create({
+    gameId,
+    message_type: "user_prompt",
+    role: "user",
+    content: message,
+  })
 
   const newMessgesId = [userNewMessage._id]; // go to delete if gemini fail
 
@@ -218,7 +246,13 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       ];
     }
     // count token-------------------------------------------------
-    const contents = buildContextForLLM(game, character, messages, message);
+    const historyContents = buildContextForLLM(game, character, messages);
+
+    const latestUserPrompt = { role: "user", parts: [{ text: message }] };
+
+    const contents = [...historyContents, latestUserPrompt]
+
+    // console.log("contents is: ", contents)
 
     const countTokensResponse = await ai.models.countTokens({
       model: LLM_NAME,
@@ -255,16 +289,39 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             }
           })
 
-          const usedToken = result.usageMetadata.totalTokenCount;
+          const { promptTokenCount, candidatesTokenCount, totalTokenCount, thoughtsTokenCount } = result.usageMetadata;
 
-          console.log("usedToken is: ", usedToken);
+          const outputTokens = (candidatesTokenCount || 0) + (thoughtsTokenCount || 0);
 
-          await gameHandlers.addUsedTokenGameById(gameId, usedToken);
+          console.log(`input_tokens: ${promptTokenCount} | output_tokens: ${outputTokens} | total_tokens: ${totalTokenCount}`);
+
+          // await gameHandlers.addUsedTokenGameById(gameId, usedToken);
+
+          await gameModel.findByIdAndUpdate(gameId, {
+            $inc: {
+              "tokenUsage.inputTokens": promptTokenCount || 0,
+              "tokenUsage.outputTokens": outputTokens,
+              "tokenUsage.totalTokens": totalTokenCount || 0,
+            }
+          })
 
           if (result.functionCalls && result.functionCalls.length > 0){
             const functionCall = result.functionCalls[0];
 
             console.log(`functionCall is: ${JSON.stringify(functionCall)}`)
+
+            const modelFunctionCallMessage = await messageModel.create({
+              gameId,
+              message_type: "model_function_call",
+              role: "model",
+              function_call: functionCall,
+              usage: {
+                inputTokens: promptTokenCount,
+                outputTokens: outputTokens,
+              }
+            })
+
+            newMessgesId.push(modelFunctionCallMessage._id)
 
             const { name, args } = functionCall;
 
@@ -272,8 +329,8 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               throw new Error("unknown function call: ", name);
             }
 
-            console.log("model wants to call a function: ", name);
-            console.log("white arguments: ", args);
+            // console.log("model wants to call a function: ", name);
+            // console.log("white arguments: ", args);
 
             args["userId"] = userId;
             args["gameId"] = gameId;
@@ -303,6 +360,18 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               }]
             })
 
+            const functionCallResultMessage = await messageModel.create({
+              gameId,
+              message_type: "tool_function_result",
+              role: "system",
+              function_result: {
+                name,
+                result: toolResult,
+              }
+            })
+
+            newMessgesId.push(functionCallResultMessage._id)
+
           } else {
             console.log("model don't have use function call.")
             const modelResponseText = result.text;
@@ -315,12 +384,18 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
             console.log("Gemini Response Text is valid, saving messages to DB...")
 
-            await messageHandlers.createMessage(
-              modelResponseText,
-              "model",
+            const modelResponseMessage = await messageModel.create({
               gameId,
-              userId
-            );
+              message_type: "model_text_response",
+              role: "model",
+              content: modelResponseText,
+              usage: {
+                inputTokens: promptTokenCount,
+                outputTokens: outputTokens,
+              }
+            })
+
+            newMessgesId.push(modelResponseMessage._id)
 
             io.to(gameId).emit("message:received", { message: modelResponseText, role: "model" });
             return;

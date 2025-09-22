@@ -1,53 +1,89 @@
-
-
-const buildContextForLLM = (game, character, messages, latestMessage) => {
+const buildContextForLLM = (game, character, messages) => {
     const contents = [];
 
-    // Part 1 & 2: 將所有「背景資料」合併到一個初始的 "user" prompt 中
-    let initialContextPrompt = "# 遊戲核心狀態\n";
-
+    // --- Part 1: 建立初始的背景資料 Prompt ---
+    let initialContextParts = [];
     if (character) {
-      initialContextPrompt += `## 角色最初狀態:\n${JSON.stringify(character)}\n`;
+        initialContextParts.push(`## 角色當前狀態:\n${JSON.stringify(character, null, 2)}`);
     }
-    // if (game.gameState) {
-    //   initialContextPrompt += `## 世界狀態:\n${JSON.stringify(game.gameState)}\n`;
-    // }
-    // 修正大小寫：KPmemo
     if (game.KpMemo && game.KpMemo.trim() !== "") {
-        initialContextPrompt += `# 故事至此的摘要:\n${game.KpMemo}\n`;
+        initialContextParts.push(`# 故事至今的摘要:\n${game.KpMemo}`);
     }
-    
-    // 只有當有實際內容時才加入
-    if (initialContextPrompt.length > 20) { // 隨意設定一個比 "# 遊戲核心狀態\n" 長的數字
+
+    // 只有當有實際背景資料時，才加入這個初始對話
+    if (initialContextParts.length > 0) {
+        const initialContextPrompt = "# 遊戲核心背景\n" + initialContextParts.join('\n\n');
         contents.push({ role: "user", parts: [{ text: initialContextPrompt }] });
-        // 重要：在 user prompt 後面必須跟一個 model prompt 才能開始對話歷史
-        contents.push({ role: "model", parts: [{ text: "好的，我已準備就緒，請開始你的行動。" }] });
+        // 在 user prompt 後面必須跟一個 model prompt 才能開始對話歷史
+        contents.push({ role: "model", parts: [{ text: "好的，我已了解當前狀況並準備就緒。請繼續你的行動。" }] });
     }
 
-    if (game.lastSummarizedMessageIndex === 0) {
-        contents.push({ role: "user", parts: [{ text: "game start" }] });
-    }
-
-    // Part 3. 從資料庫來的對話歷史
+    // --- Part 2: 處理儲存在資料庫中的對話歷史 ---
     const recentMessages = messages.slice(game.lastSummarizedMessageIndex);
-    const formattedRecentMessages = recentMessages.map((message) => ({
-        role: message.role === "model" ? "model" : "user",
-        parts: [{ text: message.content }],
-    }));
-    contents.push(...formattedRecentMessages);
 
-    // Part 4. 玩家最新輸入
-    // 在加入前，檢查最後一則訊息是否也是 user，如果是，則合併內容避免角色重複
-    const lastMessage = contents[contents.length - 1];
-    if (lastMessage && lastMessage.role === 'user') {
-        lastMessage.parts[0].text += '\n\n' + latestMessage;
-    } else {
-        contents.push({ role: "user", parts: [{ text: latestMessage }] });
+    for (const message of recentMessages) {
+        let historyItem = null;
+        // console.log(`message is: 
+        //     ${JSON.stringify(message, null, 2)}
+        //     `)
+
+        // 根據 message_type 來決定如何格式化
+        switch (message.message_type) {
+            case "user_prompt":
+                if (message.content) {
+                    historyItem = {
+                        role: "user",
+                        parts: [{ text: message.content }],
+                    };
+                }
+                break;
+
+            case "model_text_response":
+                if (message.content) {
+                    historyItem = {
+                        role: "model",
+                        parts: [{ text: message.content }],
+                    };
+                }
+                break;
+
+            case "model_function_call":
+                if (message.function_call && message.function_call.name) {
+                    historyItem = {
+                        role: "model",
+                        parts: [{
+                            functionCall: {
+                                name: message.function_call.name,
+                                args: message.function_call.args,
+                            }
+                        }],
+                    };
+                }
+                break;
+
+            case "tool_function_result":
+                if (message.function_result && message.function_result.name) {
+                    historyItem = {
+                        role: "user",
+                        parts: [{
+                            functionResponse: {
+                                name: message.function_result.name,
+                                response: message.function_result.result,
+                            }
+                        }],
+                    };
+                }
+                break;
+        }
+
+        if (historyItem) {
+            contents.push(historyItem);
+        }
     }
-    
-    // console.log("first content is: ", contents[0].parts[0].text);
+
+    // console.log("buildingContextLLM contents is: ", contents)
 
     return contents;
-}
+};
 
-export { buildContextForLLM }
+export { buildContextForLLM };
