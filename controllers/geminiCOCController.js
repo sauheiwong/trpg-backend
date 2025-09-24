@@ -314,7 +314,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               gameId,
               message_type: "model_function_call",
               role: "model",
-              function_call: functionCall,
+              function_call: JSON.stringify(functionCall, null, 2),
               usage: {
                 inputTokens: promptTokenCount,
                 outputTokens: outputTokens,
@@ -366,7 +366,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               role: "system",
               function_result: {
                 name,
-                result: toolResult,
+                result: JSON.stringify(toolResult, null, 2)
               }
             })
 
