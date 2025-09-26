@@ -1,63 +1,95 @@
+// Import the socket.io instance, likely for real-time communication with clients.
 import { io } from "../../app.js";
+// Import the 'Type' enum from the Google Generative AI library for defining tool parameter types.
 import { Type } from "@google/genai";
+import { evaluate } from "mathjs";
 
-import messageHandlers from "../../handlers/messageHandlers.js";
 
+/**
+ * Parses and evaluates a dice roll expression (e.g., '3d6', '(2d6+6)*5').
+ * @param {string} expression - The dice expression to evaluate.
+ * @returns {object|string} An object with the detailed message and result, or an error string.
+ */
 const rollDice = (expression) => {
   try {
+    // First, process the dice notation (e.g., '3d6') within the expression.
     const resolvedExpression = expression
+      // Remove all whitespace characters from the expression for easier parsing.
       .replace(/\s/g, "")
+      // Use a regular expression to find and replace all dice notations (e.g., '2d6', '1d100').
       .replace(/\b(\d+)d(\d+)\b/g, (match, numDice, numSides) => {
+        // Convert the captured strings for number of dice and sides into integers.
         const numberOfDice = parseInt(numDice, 10);
         const sides = parseInt(numSides, 10);
 
         let total = 0;
+        // Simulate rolling the dice by looping 'numberOfDice' times.
         for (let i = 0; i < numberOfDice; i++) {
+          // For each die, generate a random number between 1 and 'sides'.
           total += Math.floor(Math.random() * sides) + 1;
         }
 
         return total;
       });
 
-    const calculate = new Function(`return ${resolvedExpression}`);
-    const finalResult = calculate();
+    // Evaluate the expression to get the final result.
+    const finalResult = evaluate(resolvedExpression)
 
+    // Return a structured object containing the full process and the final numeric result.
     return {
       message: `${expression} => ${resolvedExpression} = ${Math.floor(finalResult)}`,
       result: Math.floor(finalResult),
     };
   } catch (error) {
-    return "Invalid dice format";
+    return { message: "Invalid dice format" };
   }
 };
 
-const rollSingleDice = async({ actor, reason, dice, success, secret, gameId, userId }) => {
+
+/**
+ * Handles a single dice roll for a character, determines success, and notifies clients.
+ * This is a tool function intended to be called by the Gemini model.
+ * @param {object} params - The parameters for the dice roll.
+ * @returns {object} An object containing results for the tool and a message for the model.
+ */
+const rollSingleDice = async({ actor, reason, dice, success, secret, gameId }) => {
+  // Use the rollDice utility to get the result of the dice expression.
   const rollResult = rollDice(dice);
 
+  // Log the detailed result to the server console for debugging.
   console.log(`roll dice: ${rollResult.message}, success limit is: ${success}, so ${rollResult.result <= success}`);
 
+  // Prepare the data that will be returned to the Gemini model.
   const responseData = {
     actor,
     reason,
     dice,
     result: rollResult.message,
+    // Determine if the roll was successful by comparing the result to the success threshold.
     success: rollResult.result <= success,
   }
 
-  const message = `rollSingleDice: ${JSON.stringify(responseData)}, success limit is: ${success}, so ${rollResult.result <= success ? "SUCCESS" : "FAIL"}`
+  // Create a descriptive message summarizing the action and outcome.
+  let message = `rollSingleDice:\n${JSON.stringify(responseData, null, 2)}\nsuccess limit is: ${success}, so ${rollResult.result <= success ? "SUCCESS" : "FAIL"}`
   const followingMessage = "Gemini is handling the result..."
 
+  // Check if the roll is meant to be secret.
   if (!secret){
+    // If public, emit the full result to all clients in the specified game room.
     io.to(gameId).emit("systemMessage:received", { message, followingMessage });
   } else {
-    io.to(gameId).emit("systemMessage:received", { message: "KP roll a secret dice.", followingMessage });
+    // If secret, emit a generic message to clients, hiding the actual result.
+    message = "KP roll a secret dice."
+    io.to(gameId).emit("systemMessage:received", { message, followingMessage });
   }
 
-  // const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
-
-  return { toolResult: responseData };
+  // Return the result to the Gemini model so it can continue its reasoning.
+  return { toolResult: responseData, functionMessage: message };
 };
 
+
+// This is the schema definition for the 'rollSingleDice' tool.
+// It tells the Gemini model what the function does and what parameters it expects.
 const rollSingleDiceDeclaration = {
   name: "rollSingleDice",
   description:
@@ -91,8 +123,15 @@ const rollSingleDiceDeclaration = {
   },
 };
 
-const rollCharacterStatus = async({ gameId, userId }) => {
+/**
+ * Generates a full set of character attributes (stats) by rolling dice for each.
+ * This is a tool function intended to be called by the Gemini model.
+ * @param {object} params - The parameters for the function call.
+ * @returns {object} An object containing the generated attributes and a summary message.
+ */
+const rollCharacterStatus = async({ gameId }) => {
 
+  // Define the standard attributes for a character and their corresponding dice formulas.
   const attributes = [
     { name: "STR", dice: "(3d6)*5" },
     { name: "CON", dice: "(3d6)*5" },
@@ -107,25 +146,22 @@ const rollCharacterStatus = async({ gameId, userId }) => {
 
   const result = {};
 
-  let resultMessage = "";
-
   attributes.forEach((attr) => {
+    // Call the rollDice utility for each attribute's formula.
     result[`${attr.name}`] = rollDice(attr.dice);
-    resultMessage += `${attr.name}: ${result[`${attr.name}`].result} \n`
   })
 
-  const message = `rollCharacterStatus result is: 
-  ${JSON.stringify(resultMessage)}
-  `
+  const message = `Character generation result is:\n${JSON.stringify(result, null, 2)}`
   const followingMessage = "Gemini is handling the result"
 
-  // const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
-
+  // Emit the result to all clients in the specified game room.
   io.to(gameId).emit("systemMessage:received", { message, followingMessage })
   
-  return { toolResult: result };
+  // Return the generated attributes to the Gemini model.
+  return { toolResult: result, functionMessage: message };
 };
 
+// This is the schema definition for the 'rollCharacterStatus' tool.
 const rollCharacterStatusDeclaration = {
   name: "rollCharacterStatus",
   description:

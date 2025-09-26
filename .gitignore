@@ -4,3 +4,4 @@ node_modules
 .vscode
 
 gcp-service-account-key.json
+deploy.sh

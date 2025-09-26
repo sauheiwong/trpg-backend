@@ -1,42 +1,77 @@
+// Import the socket.io instance for real-time communication.
 import { io } from "../../app.js";
+// Import the 'Type' enum for defining the tool's parameter schema.
 import { Type } from "@google/genai";
 
+// Import Mongoose models for interacting with the database.
 import COCCharacter from "../../models/COCCharacterModel.js";
 import gameModel from "../../models/gameModel.js";
 
+/**
+ * A tool function for Gemini to save a completed character sheet to the database.
+ * @param {object} infor - An object containing all character information.
+ * @returns {object} A result object for the Gemini model.
+ */
 const saveCharacterStatus = async (infor) => {
 
-  console.log("infor is: ", JSON.stringify(infor));
+  try{
 
-  const attributesMap = new Map(
-    infor.attributes.map((attr) => [attr.name, attr.value])
-  );
-  const skillsMap = new Map(
-    infor.skills.map((skill) => [skill.name, skill.value])
-  );
+    console.log("infor is: ", JSON.stringify(infor));
 
-  const characterData = {
-    ...infor,
-    attributes: attributesMap,
-    skills: skillsMap,
-    isCompleted: true,
-  };
-  const newCharacter = await COCCharacter.create(characterData);
-  console.log("new character is: ", newCharacter);
+    // Convert the attributes array (e.g., [{name: 'STR', value: 50}]) into a JavaScript Map.
+    // This is a flexible way to store key-value pairs, especially if the Mongoose schema is defined to handle Maps.
+    const attributesMap = new Map(
+      infor.attributes.map((attr) => [attr.name, attr.value])
+    );
+    // Convert the skills array into a Map as well.
+    const skillsMap = new Map(
+      infor.skills.map((skill) => [skill.name, skill.value])
+    );
 
-  await gameModel.findByIdAndUpdate(infor.gameId, {
-    characterId: newCharacter._id,
-  });
+    // Prepare the complete character data object for database creation.
+    const characterData = {
+      ...infor,
+      attributes: attributesMap,
+      skills: skillsMap,
+      isCompleted: true,
+    };
 
-  io.to(infor.gameId).emit("systemMessage:received", { message: "save character success", followingMessage: "Gemini got the result and thinking..." })
+    // Create a new character document in the database using the COCCharacter model.
+    const newCharacter = await COCCharacter.create(characterData);
+    console.log("new character is: ", newCharacter);
 
-  return { toolResult : {
-    result: "success",
-    character: newCharacter,
-    message: "please ask player 'do they want to generate an avatar of their character?'"
-  } };
+    // Link the newly created character to the current game session.
+    // This updates the game document to hold a reference to the new character's ID.
+    await gameModel.findByIdAndUpdate(infor.gameId, {
+      characterId: newCharacter._id,
+    });
+
+    // Notify all clients in the game room that the character has been saved successfully.
+    io.to(infor.gameId).emit("systemMessage:received", { message: "save character success", followingMessage: "Gemini got the result and thinking..." })
+
+    // Return a structured result to the Gemini model.
+    return { toolResult : {
+      result: "success",
+      character: newCharacter,
+      message: "please ask player 'do they want to generate an avatar of their character?'"
+      },
+      functionMessage: "save character success"
+    };
+
+  } catch (error) {
+    console.error("Error saving character:", error)
+    return {
+      toolResult: {
+        result: "error",
+        message: "Failed to save the character due to a database error.",
+        errorDetails: error.message
+      }
+    };
+  }
 };
 
+// This is the schema definition for the 'saveCharacterStatus' tool.
+// It provides a detailed structure for the AI to follow when calling this function.
 const saveCharacterStatusDeclaration = {
   name: "saveCharacterStatus",
   description: "當玩家完成克蘇魯的呼喚trpg的角色並要求將其新角色儲存時使用",
@@ -140,10 +175,6 @@ const saveCharacterStatusDeclaration = {
             damage: {
               type: Type.STRING,
               description: "裝備造成的傷害，例如: '1d4', '2d6+1'",
-            },
-            equipped: {
-              type: "boolean",
-              description: "是否已經裝備，預設為false",
             },
             description: {
               type: Type.STRING,

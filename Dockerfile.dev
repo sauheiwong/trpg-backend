@@ -1,0 +1,31 @@
+# --- 開發環境 Dockerfile ---
+# 使用一個標準的 Node.js 版本，Alpine 在某些情況下可能缺少開發工具
+# 這裡繼續使用 Alpine 是因為您原本就在用，但 node:22-slim 也是個好選擇
+FROM node:22-alpine
+
+# 設定環境變數為 development
+# 這會告訴 npm 等工具現在是開發模式
+ENV NODE_ENV=development
+
+# 設定工作目錄
+# 容器內的指令都會在這個資料夾下執行
+WORKDIR /usr/src/app
+
+# 複製 package.json 和 package-lock.json (或 yarn.lock)
+# 這是為了利用 Docker 的快取機制，只要這兩個檔案不變，就不會重新安裝依賴
+COPY package*.json ./
+
+# 安裝 "所有" 的依賴，包含 devDependencies (例如 nodemon)
+# 注意：這裡使用的是 npm install，而不是 npm ci，且沒有 --only=production
+RUN npm install
+
+# 這裡不再需要 COPY . . 指令
+# 因為我們的程式碼將會透過 docker-compose 的 volumes 功能從本機掛載進來
+# 這樣才能實現 Hot-Reloading
+
+# 開放應用程式的連接埠，讓 docker-compose 可以對應
+EXPOSE 4000
+
+# 設定預設的啟動指令，使用 npm run dev 來啟動 nodemon
+# 您的 package.json 中應有 "dev": "nodemon index.js" 之類的設定
+CMD ["npm", "run", "dev"]

@@ -15,7 +15,6 @@ import characterImageTool from "../tools/COC/characterImageTool.js";
 import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
 import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
-import { model } from "mongoose";
 
 const tokenLimit = 10**6;
 const triggerLimit = 30000; // 30K
@@ -44,6 +43,7 @@ const systemPrompt = (userLanguage, haveCharacter) => {
     "identity": "專業、友善且高效的《克蘇魯的呼喚》TRPG 守密人 (KP)。",
     "primary_task": "引導玩家完成充滿未知、恐怖和瘋狂的冒險，並根據他們的行動推動劇情。",
     "communication_style": "清晰、簡潔，善於用側面描寫和細節營造懸疑恐怖的氣氛。嚴格遵守《克蘇魯的呼喚》的規則，特別是何時擲骰方面。"
+    "response_requirements": "在你的最終回應中，不得包含任何內部的思考、推理或『THOUGHT』區塊。"
   },
   "core_gameplay_loop": [
     "1. 聆聽與澄清：仔細聆聽玩家的行動描述。若描述模糊（如『我用工具』），必須追問細節（『什麼工具？』）以確保行動合理可行。",
@@ -109,7 +109,7 @@ const systemPrompt = (userLanguage, haveCharacter) => {
       "SAN": "POW"
     },
     "skill_points": {
-      "occupation": "依職業公式計算 (例: 作家=EDU*4)",
+      "occupation": "依職業公式計算 (例: 作家=EDU*4, 運動員=EDU*2+STR*2, 根據職業所長為EDU*2+XXX*2)",
       "interest": "INT*2"
     }
   },
@@ -213,11 +213,13 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
     const availableTools = {
       rollSingleDice: rollDiceTool.rollSingleDice,
       // updateGameState: saveGameStateTool.updateGameState
+      generateCharacterImage: characterImageTool.generateCharacterImage
     };
 
     let functionDeclarations = [
       rollDiceTool.rollSingleDiceDeclaration,
       // saveGameStateTool.updateGameStateDeclaration,
+      characterImageTool.generateCharacterImageDeclaration,
     ];
 
     console.log("hasCharacter: ", hasCharacter);
@@ -233,13 +235,11 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
         ],
       ];
     } else {
-      availableTools["generateCharacterImage"] = characterImageTool.generateCharacterImage;
       availableTools["updateCharacterStats"] = updateCharacterStatsTool.updateCharacterStats;
       availableTools["generateBackgroundImage"] = backgroundImageTool.generateBackgroundImage;
       functionDeclarations = [
         ...functionDeclarations,
         ...[
-          characterImageTool.generateCharacterImageDeclaration,
           updateCharacterStatsTool.updateCharacterStatsDeclaration,
           backgroundImageTool.generateBackgroundImageDeclaration,
         ],
@@ -310,20 +310,24 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
             console.log(`functionCall is: ${JSON.stringify(functionCall)}`)
 
+            const { name, args } = functionCall;
+
             const modelFunctionCallMessage = await messageModel.create({
               gameId,
               message_type: "model_function_call",
               role: "model",
-              function_call: JSON.stringify(functionCall, null, 2),
+              content: `Gemini use ${name} function`,
+              function_call: functionCall,
               usage: {
                 inputTokens: promptTokenCount,
                 outputTokens: outputTokens,
               }
             })
 
+            io.to(gameId).emit("systemMessage:received", {message: `Gemini use ${name} function`, followingMessage: "Gemini is waiting the result☕"})
+
             newMessgesId.push(modelFunctionCallMessage._id)
 
-            const { name, args } = functionCall;
 
             if (!availableTools[name]) {
               throw new Error("unknown function call: ", name);
@@ -337,9 +341,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             args["game"] = game;
             args["characterId"] = character?._id || null;
 
-            const { toolResult, messageId } = await availableTools[name](args);
-
-            newMessgesId.push(messageId);
+            const { toolResult, functionMessage } = await availableTools[name](args);
 
             console.log("function execution result: ", toolResult);
 
@@ -364,9 +366,10 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               gameId,
               message_type: "tool_function_result",
               role: "system",
+              content: functionMessage,
               function_result: {
                 name,
-                result: JSON.stringify(toolResult, null, 2)
+                result: toolResult
               }
             })
 

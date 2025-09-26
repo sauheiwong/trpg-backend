@@ -1,7 +1,6 @@
 import { io } from "../../app.js";
 
 import Character from "../../models/COCCharacterModel.js";
-import messageHandlers from "../../handlers/messageHandlers.js";
 
 const updateCharacterStats = async ({ characterId, hp, mp, san, gameId, userId }) => {
   try {
@@ -29,7 +28,7 @@ const updateCharacterStats = async ({ characterId, hp, mp, san, gameId, userId }
 
     // 建立系統訊息
     const message = `Character ${character.name} update: HP ${character.hp.current}/${character.hp.max}, MP ${character.mp.current}/${character.mp.max}, SAN ${character.san}`;
-    const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
+    // const newMessage = await messageHandlers.createMessage(message, "system", gameId, userId);
 
     // 發送系統訊息
     io.to(gameId).emit("systemMessage:received", { message });
@@ -48,7 +47,7 @@ const updateCharacterStats = async ({ characterId, hp, mp, san, gameId, userId }
         san: character.san,
         success: true
       },
-      messageId: newMessage._id
+      functionMessage: message
     };
 
   } catch (error) {
