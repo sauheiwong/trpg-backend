@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 import { connect } from "./connect.js";
+import configService from "./services/config.service.js"
 
 // TODO: eventually import all our models here
 import "./models/userModel.js";
@@ -13,11 +14,8 @@ try {
   const { server } = await import("./app.js");
   console.log("app.js loaded");
 
-  // Start app
-  // const { app } = await import("./app.js")
-  // app.listen(process.env.PORT, () => {
-  //   console.log(`Server running on port ${process.env.PORT}`);
-  // });
+  // Load configuration into cache right after connecting to DB
+  await configService.loadConfig(true); // Force load on startup
 
   //socket.io
   server.listen(process.env.PORT, () => {
