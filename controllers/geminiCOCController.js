@@ -19,7 +19,6 @@ import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
 import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
 
 const tokenLimit = 10**6;
-const triggerLimit = 30000; // 30K
 const MAX_TURNS = 5;
 const MAX_RETRIES = 5
 const INITAIL_DELAY_MS = 1000;
@@ -100,6 +99,8 @@ const COCSinglePlayHasCharacterSystemPrompt = configService.get("COCSinglePlayHa
     "character_control": "嚴守玩家代理權，絕不替玩家角色（PC）做任何決定。你控制所有非玩家角色（NPC），並使其行動符合其性格動機。"
   }}`);
 const ThankForTesting = configService.get("ThankForTesting", "Testing time has been ended. Thank you for your testing😆")
+const triggerLimit = configService.get("triggerLimit", 22000); // 22K
+
 
 const retryMessages = {
   "0": "Brewing a little more coffee... Gemini is giving it another shot! ☕",
@@ -322,10 +323,6 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       throw new Error("Content window is too large, aborting request.");
     }
 
-    if (totalTokens > triggerLimit) {
-      await triggerSummarizationTool.triggerSummarization(game, messages)
-    }
-
     // retry system
     let lastError = null;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++){
@@ -347,7 +344,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
           const { promptTokenCount, candidatesTokenCount, totalTokenCount, thoughtsTokenCount } = result.usageMetadata;
 
-          const outputTokens = (candidatesTokenCount || 0) + (thoughtsTokenCount || 0);
+          const outputTokens = (candidatesTokenCount ?? 0) + (thoughtsTokenCount ?? 0);
 
           console.log(`input_tokens: ${promptTokenCount} | output_tokens: ${outputTokens} | total_tokens: ${totalTokenCount}`);
 
@@ -355,9 +352,9 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
           await gameModel.findByIdAndUpdate(gameId, {
             $inc: {
-              "tokenUsage.inputTokens": promptTokenCount || 0,
+              "tokenUsage.inputTokens": promptTokenCount ?? 0,
               "tokenUsage.outputTokens": outputTokens,
-              "tokenUsage.totalTokens": totalTokenCount || 0,
+              "tokenUsage.totalTokens": totalTokenCount ?? 0,
             }
           })
 
@@ -433,7 +430,6 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
           } else {
             console.log("model don't have use function call.")
-            console.log(`model result:\n${JSON.stringify(result, null, 2)}`)
             const modelResponseText = result.text;
             console.log("Model Resonse Text: ", modelResponseText);
 
@@ -458,7 +454,6 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             newMessgesId.push(modelResponseMessage._id)
 
             io.to(gameId).emit("message:received", { message: modelResponseText, role: "model" });
-            return;
           }
         }
       } catch (error) {
@@ -484,6 +479,10 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
           throw error
         }
       }
+    if (totalTokens > triggerLimit) {
+      await triggerSummarizationTool.triggerSummarization(game, messages)
+    }
+    return;
     }
   } catch (error) {
     console.error("Error ⚠️: fail to call Gemini API: ", error);

@@ -147,16 +147,15 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
                 imageUrl: imageUrl,
             });
 
+            // Return a successful result to the Gemini model.
+            return { toolResult: {
+                result: "success",
+                imageUrl: imageUrls, // Return the URL in the tool result.
+                message: "new background image has been generated."
+                },
+                functionMessage: successMessageContent
+            };
         }
-        
-        // Return a successful result to the Gemini model.
-        return { toolResult: {
-            result: "success",
-            imageUrl: imageUrls, // Return the URL in the tool result.
-            message: "new background image has been generated."
-            },
-            functionMessage: successMessageContent
-    };
         
     } catch (error) {
         console.error("Error ⚠️: fail to generate an image: ", error.response ? error.response.data : error.message);
