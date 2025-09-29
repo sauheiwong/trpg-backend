@@ -18,7 +18,7 @@ import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
 import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
 
-const tokenLimit = 10**6;
+const tokenLimit = 4*10**4; // 40,000
 const MAX_TURNS = 5;
 const MAX_RETRIES = 5
 const INITAIL_DELAY_MS = 1000;
@@ -272,12 +272,14 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
     const totalTokens = countTokensResponse.totalTokens;
 
-    console.log("The total token is: ", totalTokens);
+    console.log("The total token before processing is: ", totalTokens);
     // --------------------------------------------------------------
 
     if ( totalTokens > tokenLimit ) {
       throw new Error("Content window is too large, aborting request.");
     }
+
+    let totalInputToken = 0;
 
     // retry system
     let lastError = null;
@@ -396,6 +398,8 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
             console.log("Gemini Response Text is valid, saving messages to DB...")
 
+            totalInputToken = promptTokenCount;
+
             const modelResponseMessage = await messageModel.create({
               gameId,
               message_type: "model_text_response",
@@ -436,7 +440,8 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
           throw error
         }
       }
-    if (totalTokens > triggerLimit) {
+    console.log(`totalInputToken: ${totalInputToken}`);
+    if (totalInputToken > triggerLimit) {
       await triggerSummarizationTool.triggerSummarization(game, messages)
     }
     return;
