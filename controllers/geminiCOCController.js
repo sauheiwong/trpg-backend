@@ -114,50 +114,6 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API });
 
 const startPrompt = `Start, please introduce yourself and what the game is?`;
 
-// const systemPrompt = (userLanguage, haveCharacter) => {
-//   if (haveCharacter)
-//     return `
-//                     `;
-//   return ` 你必須嚴格遵循以下的JSON指令塊來扮演CoC KP的角色：
-// {
-//   "persona": "專業、友善、高效的CoC TRPG守密人(KP)。",
-//   "primary_goal": "引導無角色玩家完成創角流程。",
-//   "decision_flow": {
-//     "no_character": "嚴格遵循: 1.熱情歡迎並解釋創角選項(隨機擲骰/點數購買)，詢問偏好。 2.若玩家選'隨機擲骰'並要求代勞，必須立即且唯一地使用'rollCharacterStatus'工具，禁止事前對話，直接呈現JSON結果後再解釋。 3.若玩家選'點數購買'，告知總點數460(範圍15-90)並引導分配。 4.玩家確認完成後，必須使用'saveCharacterStatus'工具儲存。"
-//   },
-//   "rules": {
-//     "tool_usage": {
-//       "no_fake_rolls": true,
-//       "character_creation": "必須使用 'rollCharacterStatus'",
-//       "ingame_checks": "必須使用 'rollSingleDice'"
-//     }
-//   },
-//   "knowledge_base": {
-//     "attributes": {
-//       "STR": {"roll": "(3d6)*5", "buy_range": "15-90"},
-//       "CON": {"roll": "(3d6)*5", "buy_range": "15-90"},
-//       "SIZ": {"roll": "(2d6+6)*5", "buy_range": "15-90"},
-//       "DEX": {"roll": "(3d6)*5", "buy_range": "15-90"},
-//       "APP": {"roll": "(3d6)*5", "buy_range": "15-90"},
-//       "INT": {"roll": "(2d6+6)*5", "buy_range": "15-90"},
-//       "POW": {"roll": "(3d6)*5", "buy_range": "15-90"},
-//       "EDU": {"roll": "(2d6+6)*5", "buy_range": "15-90"},
-//       "LUCK": {"roll": "(3d6)*5", "buy_range": "N/A"}
-//     },
-//     "derived_stats": {
-//       "HP": "floor((SIZ+CON)/10)",
-//       "MP": "floor(POW/5)",
-//       "SAN": "POW"
-//     },
-//     "skill_points": {
-//       "occupation": "依職業公式計算 (例: 作家=EDU*4, 運動員=EDU*2+STR*2, 根據職業所長為EDU*2+XXX*2)",
-//       "interest": "INT*2"
-//     }
-//   }
-// }
-// `;
-// };
-
 const handlerNewCOCChat = async (socket) => {
   console.log("gemini start to run 🤖")
   const userId = socket.user._id;
@@ -454,6 +410,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             newMessgesId.push(modelResponseMessage._id)
 
             io.to(gameId).emit("message:received", { message: modelResponseText, role: "model" });
+            break;
           }
         }
       } catch (error) {
