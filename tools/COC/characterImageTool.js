@@ -59,63 +59,71 @@ const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId
             },
         })
 
-        // Although an array is initialized, the loop will only run once and return.
-        const imageUrls = [];
-
-        for (const generatedImage of response.generatedImages) {
-            // Get the Base64 encoded image data.
-            const imgBtypes = generatedImage.image.imageBytes;
-
-            // Convert the Base64 string into a Buffer.
-            const buffer = Buffer.from(imgBtypes, "base64");
-            const fileName = `characters/${gameId}-${Date.now()}.png`
-
-            const file = bucket.file(fileName);
-
-            console.log(`[Image Gen] 準備上傳圖片到 GCS: ${fileName}`);
-
-            // Asynchronously upload the file buffer to GCS using a stream.
-            await new Promise((resolve, reject) => {
-                const stream = file.createWriteStream({
-                    metadata: { contentType: "image/png" },
-                    resumable: false,
-                });
-                stream.on("finish", resolve);
-                stream.on("error", reject);
-                stream.end(buffer);
-            })
-
-            // Construct the public URL for the uploaded image.
-            const imageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-            imageUrls.push(imageUrl);
-            console.log(`[Image Gen] 圖片上傳成功. URL: ${imageUrl}`);
-
-            // 6. Update the character document in the database with the new image URL.
-            await Character.findByIdAndUpdate(characterId, {
-                $set: { imageUrl }
-            });
-            console.log(`[Image Gen] Character ${characterId} image URL updated in database.`);
-
-            // 7. Prepare and send a success message to the clients.
-            const successMessageContent = `Success to generate an avatar of your character！\n![character avatar](${imageUrl})`;
-            io.to(gameId).emit("systemMessage:received", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing......"});
-
-            
-            // Send a specific, dedicated event for easier UI updates on the client side.
-            io.to(gameId).emit("characterImage:updated", {
-                characterId: characterId,
-                imageUrl: imageUrl,
-            });
-
-            // ======================================================================
-
-            return { toolResult: {
-                result: "success",
-                imageUrl: imageUrl, // 在 toolResult 中也回傳 URL
+        // [FIX 1] Check if the response contains any generated images.
+        if (!response.generatedImages || response.generatedImages.length === 0) {
+            console.error("Error ⚠️: Image generation API returned no images.");
+            io.to(gameId).emit("systemMessage:received", { message: "Image generation failed. The prompt might have been rejected by the safety filter." });
+            return {
+                toolResult: {
+                result: "error",
+                error: "The image generation API did not return any images. This might be due to a safety policy violation.",
                 },
-                functionMessage: successMessageContent,
             };
         }
+
+        // Get the Base64 encoded image data.
+        const generatedImage = response.generatedImages[0];
+        const imgBtypes = generatedImage.image.imageBytes;
+
+        // Convert the Base64 string into a Buffer.
+        const buffer = Buffer.from(imgBtypes, "base64");
+        const fileName = `characters/${gameId}-${Date.now()}.png`
+
+        const file = bucket.file(fileName);
+
+        console.log(`[Image Gen] 準備上傳圖片到 GCS: ${fileName}`);
+
+        // Asynchronously upload the file buffer to GCS using a stream.
+        await new Promise((resolve, reject) => {
+            const stream = file.createWriteStream({
+                metadata: { contentType: "image/png" },
+                resumable: false,
+            });
+            stream.on("finish", resolve);
+            stream.on("error", reject);
+            stream.end(buffer);
+        })
+
+        // Construct the public URL for the uploaded image.
+        const imageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+        imageUrls.push(imageUrl);
+        console.log(`[Image Gen] 圖片上傳成功. URL: ${imageUrl}`);
+
+        // 6. Update the character document in the database with the new image URL.
+        await Character.findByIdAndUpdate(characterId, {
+            $set: { imageUrl }
+        });
+        console.log(`[Image Gen] Character ${characterId} image URL updated in database.`);
+
+        // 7. Prepare and send a success message to the clients.
+        const successMessageContent = `Success to generate an avatar of your character！\n![character avatar](${imageUrl})`;
+        io.to(gameId).emit("systemMessage:received", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing......"});
+
+        
+        // Send a specific, dedicated event for easier UI updates on the client side.
+        io.to(gameId).emit("characterImage:updated", {
+            characterId: characterId,
+            imageUrl: imageUrl,
+        });
+
+        // ======================================================================
+
+        return { toolResult: {
+            result: "success",
+            imageUrl: imageUrl, // 在 toolResult 中也回傳 URL
+            },
+            functionMessage: successMessageContent,
+        };
         
     } catch (error) {
         console.error("Error ⚠️: fail to generate an image: ", error.response ? error.response.data : error.message);

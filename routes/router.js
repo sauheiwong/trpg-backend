@@ -3,6 +3,7 @@ import passport from "passport";
 
 import userController from "../controllers/userController.js";
 import gameCOCController from "../controllers/gameCOCController.js";
+import COCTestController from "../controllers/COCTestController.js";
 import gameDNDController from "../controllers/gameDNDController.js";
 // import geminiCOCController from "../controllers/geminiCOCController.js";
 import geminiDNDController from "../controllers/geminiDNDController.js";
@@ -52,6 +53,8 @@ router.post("/api/roll", requireAuth, rollDiceController.rollDice);
 router.get("/api/game", requireAuth, gameCOCController.getGame);
 
 router.get("/api/game/:id", requireAuth, gameCOCController.getGameById);
+
+router.get("/api/game/test/characterUpdate/:id", requireAuth, COCTestController.characterUpdate)
 
 // router.get(
 //   "/api/coc/characters",

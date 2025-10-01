@@ -92,70 +92,77 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
             },
         })
         
-        // An array to hold the URLs of the generated images.
-        const imageUrls = [];
-
-        // Loop through the array of generated images (even though we only expect one).
-        for (const generatedImage of response.generatedImages) {
-            // Get the raw image data, which is Base64 encoded.
-            const imgBytes = generatedImage.image.imageBytes;
-
-            // Convert the Base64 string into a Buffer for uploading.
-            const buffer = Buffer.from(imgBytes, "base64");
-            // Create a unique filename using the game ID and a timestamp.
-            const fileName = `background/${gameId}-${Date.now()}.png`
-
-            // Get a reference to the file object in the GCS bucket.
-            const file = bucket.file(fileName);
-
-            console.log(`[Image Gen] 準備上傳圖片到 GCS: ${fileName}`);
-
-            // Asynchronously upload the file buffer to GCS using a stream.
-            // We wrap this in a Promise to use async/await syntax.
-            await new Promise((resolve, reject) => {
-                const stream = file.createWriteStream({
-                    metadata: { contentType: "image/png" },
-                    resumable: false,
-                });
-                stream.on("finish", resolve);
-                stream.on("error", reject);
-                stream.end(buffer);
-            })
-
-            // Construct the public URL for the newly uploaded image.
-            const imageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-            imageUrls.push(imageUrl);
-            console.log(`[Image Gen] 圖片上傳成功. URL: ${imageUrl}`);
-
-            // Update the game document in the database with the new image URL.
-            await COCGame.findByIdAndUpdate(gameId, {
-                $set: {
-                    // Use a computed property name to update the specific key in the backgroundImages map.
-                    [`backgroundImages.${name}`]: imageUrl,
-                    // Also update the current background image to the new one.
-                    ["currentBackgroundImage"]: imageUrl,
-                }
-            })
-
-            // 7. Prepare a success message with the image embedded in Markdown format.
-            const successMessageContent = `Success to generate a background image!\n![background](${imageUrl})`;
-            
-            io.to(gameId).emit("systemMessage:received", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing..."});
-            
-            // Send a dedicated event for the UI to easily update the background.
-            io.to(gameId).emit("backgroundImage:updated", {
-                imageUrl: imageUrl,
-            });
-
-            // Return a successful result to the Gemini model.
-            return { toolResult: {
-                result: "success",
-                imageUrl: imageUrls, // Return the URL in the tool result.
-                message: "new background image has been generated."
+        // [FIX 1] Check if the response contains any generated images.
+        if (!response.generatedImages || response.generatedImages.length === 0) {
+            console.error("Error ⚠️: Image generation API returned no images.");
+            io.to(gameId).emit("systemMessage:received", { message: "Image generation failed. The prompt might have been rejected by the safety filter." });
+            return {
+                toolResult: {
+                result: "error",
+                error: "The image generation API did not return any images. This might be due to a safety policy violation.",
                 },
-                functionMessage: successMessageContent
             };
         }
+
+        // Get the raw image data, which is Base64 encoded.
+        const generatedImage = response.generatedImages[0];
+        const imgBytes = generatedImage.image.imageBytes;
+
+        // Convert the Base64 string into a Buffer for uploading.
+        const buffer = Buffer.from(imgBytes, "base64");
+        // Create a unique filename using the game ID and a timestamp.
+        const fileName = `background/${gameId}-${Date.now()}.png`
+
+        // Get a reference to the file object in the GCS bucket.
+        const file = bucket.file(fileName);
+
+        console.log(`[Image Gen] 準備上傳圖片到 GCS: ${fileName}`);
+
+        // Asynchronously upload the file buffer to GCS using a stream.
+        // We wrap this in a Promise to use async/await syntax.
+        await new Promise((resolve, reject) => {
+            const stream = file.createWriteStream({
+                metadata: { contentType: "image/png" },
+                resumable: false,
+            });
+            stream.on("finish", resolve);
+            stream.on("error", reject);
+            stream.end(buffer);
+        })
+
+        // Construct the public URL for the newly uploaded image.
+        const imageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+        imageUrls.push(imageUrl);
+        console.log(`[Image Gen] 圖片上傳成功. URL: ${imageUrl}`);
+
+        // Update the game document in the database with the new image URL.
+        await COCGame.findByIdAndUpdate(gameId, {
+            $set: {
+                // Use a computed property name to update the specific key in the backgroundImages map.
+                [`backgroundImages.${name}`]: imageUrl,
+                // Also update the current background image to the new one.
+                ["currentBackgroundImage"]: imageUrl,
+            }
+        })
+
+        // 7. Prepare a success message with the image embedded in Markdown format.
+        const successMessageContent = `Success to generate a background image!\n![background](${imageUrl})`;
+        
+        io.to(gameId).emit("systemMessage:received", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing..."});
+        
+        // Send a dedicated event for the UI to easily update the background.
+        io.to(gameId).emit("backgroundImage:updated", {
+            imageUrl: imageUrl,
+        });
+
+        // Return a successful result to the Gemini model.
+        return { toolResult: {
+            result: "success",
+            imageUrl: imageUrls, // Return the URL in the tool result.
+            message: "new background image has been generated."
+            },
+            functionMessage: successMessageContent
+        };
         
     } catch (error) {
         console.error("Error ⚠️: fail to generate an image: ", error.response ? error.response.data : error.message);

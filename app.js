@@ -72,7 +72,6 @@ io.on("connection", (socket) => {
         geminiCOCController.handlerUserMessageCOCChat(data, socket.user, 'user');
     })
 
-
     socket.on("disconnect", () => {
         console.log("user disconnected: ", socket.user.username);
     });
