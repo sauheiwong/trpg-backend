@@ -96,7 +96,6 @@ const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId
 
         // Construct the public URL for the uploaded image.
         const imageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-        imageUrls.push(imageUrl);
         console.log(`[Image Gen] 圖片上傳成功. URL: ${imageUrl}`);
 
         // 6. Update the character document in the database with the new image URL.

@@ -37,13 +37,6 @@ const bucket = storage.bucket("my-trpg-background-images");
  */
 const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
     // 1. Validate the input prompt to ensure it's not empty.
-    if (!imagePrompt || imagePrompt.trim() === "") {
-        console.error("Error ⚠️: fail to generate an image: empty prompt");
-        return { toolResult: {
-            result: "error",
-            error: "Failed to generate image due to empty prompt",
-        }};
-    }
 
     // Check if an image with the same name already exists in the database for caching purposes.
     const game = await COCGame.findById(gameId);
@@ -66,6 +59,14 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
         // Send a specific event for the UI to update the background image directly.
         io.to(gameId).emit("backgroundImage:updated", { imageUrl: existingImageUrl });
 
+        await COCGame.findByIdAndUpdate(gameId, {
+            $set: {
+                // Use a computed property name to update the specific key in the backgroundImages map.
+                // Also update the current background image to the new one.
+                ["currentBackgroundImage"]: existingImageUrl,
+            }
+        })
+
         return { toolResult: {
             result: "success",
             imageUrl: existingImageUrl,
@@ -74,6 +75,16 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
             functionMessage: reuseMessageContent
         };
     }
+
+    if (!imagePrompt || imagePrompt.trim() === "") {
+        console.error("Error ⚠️: fail to generate an image: empty prompt");
+        return { toolResult: {
+            result: "error",
+            error: "Failed to generate image due to empty prompt",
+        }};
+    }
+
+    const imageUrls = [];
 
     // 2. If no existing image is found, proceed with generation.
     // Notify clients that the image generation process has started.
@@ -186,14 +197,14 @@ const generateBackgroundImageDeclaration = {
         properties: {
             imagePrompt: {
                 type: Type.STRING, // Gemini API 中 STRING 通常是大寫
-                description: "用於生成場景背景圖的詳細英文描述。"
+                description: "如果是新場景，就要提供提示詞。用於生成場景背景圖的詳細英文描述。"
             },
             name: {
                 type: Type.STRING,
                 description: "場景的英文名字，方便之後重用。"
             }
         },
-        required: ["imagePrompt", "name"]
+        required: ["name"]
     }
 };
 

@@ -10,7 +10,7 @@ import COCCharacterModel from "../models/COCCharacterModel.js";
 
 const createGame = async (userId) => {
   try {
-    return await Game.create({ userId, title: "new game" });
+    return await Game.create({ userId, title: "Default Title" });
   } catch (error) {
     throw error;
   }

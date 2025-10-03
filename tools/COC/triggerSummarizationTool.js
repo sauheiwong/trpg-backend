@@ -9,7 +9,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API });
 
 const buffer = 10;
 
-const triggerSummarization = async(game, messages) => {
+const triggerSummarization = async(game, messages, language) => {
     console.log(`game ${game._id} triggering summrization`);
 
     const messagesToSummarize = messages.slice(game.lastSummarizedMessageIndex);
@@ -32,8 +32,7 @@ const triggerSummarization = async(game, messages) => {
     `
 
     const summaryPrompt = `
-    你是一個TRPG遊戲的紀錄員。請閱讀以下舊的摘要和完整的對話歷史，生成一段新的、精簡的、涵蓋所有關鍵劇情點的摘要，要包括故事的目標、地點、時代、NPC、NPC們與主角的關係和名字。不需要包含主角資料，因為KP有主角的角色卡。
-    `
+    你是一個TRPG遊戲的紀錄員。請閱讀以下舊的摘要和完整的對話歷史，生成一段新的、精簡的、涵蓋所有關鍵劇情點的摘要，要包括故事的目標、地點、時代、NPC、NPC們與主角的關係和名字。不需要包含主角資料，因為KP有主角的角色卡。必須使用**${language}**來生成摘要。`
 
     const result = await ai.models.generateContent({
         model: "gemini-2.5-flash",

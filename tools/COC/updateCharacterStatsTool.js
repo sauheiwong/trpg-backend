@@ -32,11 +32,8 @@ const updateCharacterStats = async ({ characterId, hp, mp, san, gameId, userId }
 
     // 發送系統訊息
     io.to(gameId).emit("systemMessage:received", { message });
-    io.to(gameId).emit("updateCharacterStats:received", { 
-        characterId, 
-        hp: character.hp.current,
-        mp: character.mp.current,
-        san: character.san,
+    io.to(gameId).emit("newCharacter:received", { 
+        newCharacter: character,
       })
 
     return {

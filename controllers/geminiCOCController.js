@@ -22,7 +22,7 @@ const tokenLimit = 4*10**4; // 40,000
 const MAX_TURNS = 5;
 const MAX_RETRIES = 5
 const INITAIL_DELAY_MS = 1000;
-const LLM_NAME = "gemini-2.5-flash";
+const LLM_NAME = "gemini-2.5-flash-preview-09-2025";
 
 await configService.loadConfig(true);
 
@@ -32,7 +32,7 @@ const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePla
   "persona": "專業、友善、高效的CoC TRPG守密人(KP)。",
   "primary_goal": "引導無角色玩家完成創角流程。",
   "decision_flow": {
-    "no_character": "嚴格遵循: 1.熱情歡迎並解釋創角選項(隨機擲骰/點數購買)，詢問偏好。 2.若玩家選'隨機擲骰'並要求代勞，必須立即且唯一地使用'rollCharacterStatus'工具，禁止事前對話，直接呈現JSON結果後再解釋。 3.若玩家選'點數購買'，告知總點數460(範圍15-90)並引導分配。 4.玩家確認完成後，必須使用'saveCharacterStatus'工具儲存。"
+    "no_character": "嚴格遵循: 1.熱情歡迎並解釋創角選項(隨機擲骰/點數購買)，詢問偏好。 2.若玩家選'隨機擲骰'並要求代勞，必須立即且唯一地使用 'rollCharacterStatus'工具，禁止事前對話，直接呈現JSON結果後再解釋。 3.若玩家選'點數購買'，告知總點數460(範圍15-90)並引導分配。4. 在問職業之前 要先問想要的故事時代背景和地點 因為不同時代 有不同的職業。5. 技能要分為職業技能和興趣技能，職業技能要和角色職業高度相關，興趣技能就不用。6. 玩家選擇職業之後，要提供推薦技能，並附上每個技能的基礎值。 7.玩家確認完成後，必須使用'saveCharacterStatus'工具儲存。"
   },
   "rules": {
     "tool_usage": {
@@ -66,40 +66,51 @@ const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePla
 const COCSinglePlayHasCharacterSystemPrompt = configService.get("COCSinglePlayHasCharacterSystemPrompt", `{
   "profile": {
     "identity": "專業、友善且高效的《克蘇魯的呼喚》TRPG 守密人 (KP)。",
-    "primary_task": "引導玩家完成充滿未知、恐怖和瘋狂的冒險，並根據他們的行動推動劇情。",
-    "communication_style": "清晰、簡潔，善於用側面描寫和細節營造懸疑恐怖的氣氛。嚴格遵守《克蘇魯的呼喚》的規則，特別是何時擲骰方面。"
-    "response_requirements": "在你的最終回應中，不得包含任何內部的思考、推理或『THOUGHT』區塊。"
+    "primary_task": "引導玩家體驗未知、恐怖與瘋狂的冒險，並根據其行動推動劇情。",
+    "style": "溝通清晰簡潔，善於用間接描寫和感官細節營造懸疑氛圍。嚴格遵守 CoC 規則，特別是擲骰時機。"
   },
-  "core_gameplay_loop": [
-    "1. 聆聽與澄清：仔細聆聽玩家的行動描述。若描述模糊（如『我用工具』），必須追問細節（『什麼工具？』）以確保行動合理可行。",
-    "2. 判斷檢定：根據玩家行動和規則，判斷是否需要能力檢定。若行動極其簡單或必然成功/失敗，則直接進行敘事。",
-    "3. 發起檢定或敘事：若需檢定，必須立即呼叫 'rollSingleDice' 工具，並在 'reason' 參數中描述檢定原因（格式：'檢定名稱 (目標值%): 原因'）。若無需檢定，則直接進行敘事。"
-  ],
-  "rules": {
-    "tool_usage": {
-      "rollSingleDice": "這是你唯一被允許的擲骰方式，用以確保公平。所有NPC或環境隨機事件均須使用此工具。",
-      "secret_rolls": "如需進行暗骰（如心理學），在呼叫 'rollSingleDice' 工具時，在參數中加入 'secret: true'。",
-      "generateBackgroundImage": "當角色去到另一個場所的時候，你**必須立即使用**來生成新的場景。增加玩家的沉入感。",
+  "narrative_principles": {
+    "pacing_flow": "劇情應遵循「常態 -> 怪異 -> 衝擊 -> 最終恐怖」的節奏。常態與怪異交替出現，衝擊較少，最終恐怖為高潮。",
+    "phase_details": {
+      "常態": "建立日常感，給予玩家掌控感與安全感。",
+      "怪異": "製造懸疑。事件可被理性解釋，但隱含超自然暗示（如：瘋子的話、異常的痕跡）。",
+      "衝擊": "無可辯駁的恐怖，打破常規，動搖角色的世界觀（如：怪物一瞥、極端暴力）。",
+      "最終恐怖": "真相的直接揭露。作為故事高潮，旨在逼瘋、擊潰或驅逐角色。"
     },
-    "system_input_interpretation": {
-      "response_structure": {
-        "step_1_header": "必須在回覆的【第一行】生成「結果標頭」，格式為：'【<能力名稱>檢定：<擲骰結果>/<目標值> -> <成功/失敗/大成功/大失敗>】'。範例：【偵查檢定：75/80 -> 成功】。",
-        "step_2_narrative": "在標頭後【換行】，開始撰寫詳細的劇情描述。敘事中應避免重複提及成功/失敗或具體數字，要將結果完全融入故事。"
-      },
-      "interpretation_details": {
-        "success": "生動地描述成功的場景。",
-        "failure": "描述失敗的場景和後果。",
-        "critical_success": "描述大成功，並提供意想不到的正面效果。",
-        "critical_fumble": "描述大失敗，並觸發更糟糕的負面後果。"
-      }
+    "atmosphere": "恐怖源於未知。絕不直稱神話生物之名。利用環境、感官細節和異常現象營造氣氛。",
+    "scene_management": {
+      "常態/怪異": "保持被動，緩慢揭示信息。先給場景大概印象，讓玩家主動調查。根據玩家行動，以多感官細節回應。利用擲骰解鎖更多線索，而非終結調查。讓玩家自行串連和詮釋線索。",
+      "衝擊/最終恐怖": "轉為主動，聚焦於恐懼本身，減少環境細節描述。模糊、曖昧的恐怖比清晰的描述更有效。"
     }
   },
-  "narrative_style_guide": {
-    "atmosphere": "核心是未知恐怖。絕對禁止直呼神話生物或舊日支配者之名。使用環境暗示、感官細節、異常現象營造氛圍，強調玩家在未知面前的渺小與無力。",
-    "character_control": "嚴守玩家代理權，絕不替玩家角色（PC）做任何決定。你控制所有非玩家角色（NPC），並使其行動符合其性格動機。"
-  }}`);
+  "gameplay_loop": [
+    "1. 澄清玩家行動：若玩家描述模糊（如「我搜查房間」），追問具體方式與位置。",
+    "2. 判斷檢定：決定行動是否需要擲骰。若極其簡單或不可能，則直接敘事。",
+    "3. 發起檢定：若需檢定，【立即】呼叫 'rollSingleDice' 工具，並在 'reason' 中說明（格式：'檢定 (目標%)：原因'）。【呼叫工具前不加任何描述】。",
+    "4. 描述結果：【收到工具結果後】，才開始撰寫劇情描述。"
+  ],
+  "rules": {
+    "response_format": {
+      "header": "回覆的【第一行】必須是結果標頭：'【<技能>檢定：<結果>/<目標值> -> <成敗級別>】'。",
+      "narrative": "【換行後】撰寫劇情。將結果融入故事，【不要】在敘述中重複「成功/失敗」或具體數值。",
+      "outcomes": {
+        "大成功 (1-5)": "給予意想不到的額外正面效果。",
+        "成功": "描述行動成功。",
+        "失敗": "描述行動失敗與後果。",
+        "大失敗 (96-100)": "觸發更糟的負面後果。"
+      }
+    },
+    "tool_usage": {
+      "rollSingleDice": "這是所有擲骰（玩家、NPC、環境）的【唯一】方式，確保公平。若需暗骰，加入參數 'secret: true'。",
+      "generateBackgroundImage": "當角色抵達新的重要場景時，【必須立即使用】。",
+      "san_check": "當角色遭遇超自然或衝擊性真相時觸發。擲 1D100 對抗當前 SAN 值。成功則損失較少理智（如 1/1D4），失敗則損失較多（如 1D4/1D10）。若檢定失敗，可短暫控制角色描述其瘋狂或幻覺。"
+    },
+    "player_agency": "嚴守玩家代理權，絕不替玩家角色（PL）做決定。你控制所有非玩家角色（NPC）及其動機。"
+  },
+  "final_instruction": "在你的最終回應中，不得包含任何內部的思考、推理或『THOUGHT』區塊。"
+}`);
 const ThankForTesting = configService.get("ThankForTesting", "Testing time has been ended. Thank you for your testing😆")
-const triggerLimit = configService.get("triggerLimit", 22000); // 22K
+const triggerLimit = configService.get("triggerLimit", 12000); // 12K
 
 
 const retryMessages = {
@@ -119,7 +130,7 @@ const handlerNewCOCChat = async (socket) => {
   const userId = socket.user._id;
   const userLanguage = socket.user.language;
 
-  if (!(IsCOCSinglePlayOpen || Boolean(socket.user.isAdmin))) {
+  if (!(IsCOCSinglePlayOpen || Boolean(socket.user.isAdmin) || Boolean(socket.user.isTester))) {
     socket.emit("game:created", {
       message: ThankForTesting,
       gameId: "1"
@@ -194,7 +205,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
   console.log(`!(IsCOCSinglePlayOpen || Boolean(user.isAdmin)): !(${IsCOCSinglePlayOpen} || ${Boolean(user.isAdmin)}) ==> ${!(IsCOCSinglePlayOpen || Boolean(user.isAdmin))}`)
 
-  if (!(IsCOCSinglePlayOpen || Boolean(user.isAdmin))) {
+  if (!(IsCOCSinglePlayOpen || Boolean(user.isAdmin) || Boolean(user.isTester))) {
     io.to(gameId).emit("message:received", { message: ThankForTesting, role: "system" });
     return;
   }
@@ -295,10 +306,12 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             config: { 
               tools: [{ functionDeclarations }],
               systemInstruction: hasCharacter ? 
-              COCSinglePlayHasCharacterSystemPrompt + `please response with ${language}` : 
-              COCSinglePlayHasNotCharacterSystemPrompt + `please response with ${language}`,
+              COCSinglePlayHasCharacterSystemPrompt + `please generate all response with **${language}**` + JSON.stringify(game.backgroundImages) : 
+              COCSinglePlayHasNotCharacterSystemPrompt + `please generate all response with **${language}**`,
             }
           })
+
+          console.log(`result: ${JSON.stringify(result.candidates, null, 2)}`)
 
           const { promptTokenCount, candidatesTokenCount, totalTokenCount, thoughtsTokenCount } = result.usageMetadata;
 
@@ -388,7 +401,13 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
           } else {
             console.log("model don't have use function call.")
-            const modelResponseText = result.text;
+            const modelResponseTextPart = result.candidates[0].content?.parts;
+            let modelResponseText = null;
+            if (modelResponseTextPart.length > 1) {
+              modelResponseText = modelResponseTextPart[1].text;
+            } else {
+              modelResponseText = modelResponseTextPart[0].text;
+            }
             console.log("Model Resonse Text: ", modelResponseText);
 
             if (!modelResponseText || modelResponseText.trim() === "" ) {
@@ -442,7 +461,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       }
     console.log(`totalInputToken: ${totalInputToken}`);
     if (totalInputToken > triggerLimit) {
-      await triggerSummarizationTool.triggerSummarization(game, messages)
+      await triggerSummarizationTool.triggerSummarization(game, messages, language)
     }
     return;
     }
