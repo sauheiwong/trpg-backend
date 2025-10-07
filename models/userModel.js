@@ -17,7 +17,7 @@ const userSchema = mongoose.Schema({
   },
   language: {
     type: String,
-    default: "English",
+    default: "en",
   },
 });
 

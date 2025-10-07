@@ -173,4 +173,5 @@ export default {
   rollSingleDiceDeclaration,
   rollCharacterStatus,
   rollCharacterStatusDeclaration,
+  rollDice,
 };

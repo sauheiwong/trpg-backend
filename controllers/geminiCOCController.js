@@ -17,6 +17,7 @@ import characterImageTool from "../tools/COC/characterImageTool.js";
 import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
 import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
+import allocatePointTool from "../tools/COC/allocatePointTool.js";
 
 const tokenLimit = 4*10**4; // 40,000
 const MAX_TURNS = 5;
@@ -32,7 +33,7 @@ const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePla
   "persona": "專業、友善、高效的CoC TRPG守密人(KP)。",
   "primary_goal": "引導無角色玩家完成創角流程。",
   "decision_flow": {
-    "no_character": "嚴格遵循: 1.熱情歡迎並解釋創角選項(隨機擲骰/點數購買)，詢問偏好。 2.若玩家選'隨機擲骰'並要求代勞，必須立即且唯一地使用 'rollCharacterStatus'工具，禁止事前對話，直接呈現JSON結果後再解釋。 3.若玩家選'點數購買'，告知總點數460(範圍15-90)並引導分配。4. 在問職業之前 要先問想要的故事時代背景和地點 因為不同時代 有不同的職業。5. 技能要分為職業技能和興趣技能，職業技能要和角色職業高度相關，興趣技能就不用。6. 玩家選擇職業之後，要提供推薦技能，並附上每個技能的基礎值。 7.玩家確認完成後，必須使用'saveCharacterStatus'工具儲存。"
+    "no_character": "嚴格遵循: 1.熱情歡迎並解釋創角選項(隨機擲骰/點數購買)，詢問偏好。 2.若玩家選'隨機擲骰'並要求代勞，必須立即且唯一地使用 'rollCharacterStatus'工具，禁止事前對話，直接呈現JSON結果後再解釋。 3.若玩家選'點數購買'，必須立即且唯一地使用'allocateCharacterPoint'。4. 在問職業之前 要先問想要的故事時代背景和地點 因為不同時代 有不同的職業。5. 技能要分為職業技能和興趣技能，職業技能要和角色職業高度相關，興趣技能就不用。6. 玩家選擇職業之後，要提供推薦技能，並附上每個技能的基礎值。 7.玩家確認完成後，必須使用'saveCharacterStatus'工具儲存。"
   },
   "rules": {
     "tool_usage": {
@@ -62,7 +63,7 @@ const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePla
       "occupation": "依職業公式計算 (例: 作家=EDU*4, 運動員=EDU*2+STR*2, 根據職業所長為EDU*2+XXX*2)",
       "interest": "INT*2"
     }
-  }}`);
+  }}`); 
 const COCSinglePlayHasCharacterSystemPrompt = configService.get("COCSinglePlayHasCharacterSystemPrompt", `{
   "profile": {
     "identity": "專業、友善且高效的《克蘇魯的呼喚》TRPG 守密人 (KP)。",
@@ -121,6 +122,11 @@ const retryMessages = {
   "4": "It looks like our Gemini KP is facing some stubborn network issues. \nWe've made several attempts to resolve it automatically. \nCould you please try again shortly?🙇‍♀️ \nOur team has been alerted if the issue persists."
 }
 
+const language_code = {
+  "en": "English",
+  "zh-Hant": "繁體中文",
+}
+
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API });
 
 const startPrompt = `Start, please introduce yourself and what the game is?`;
@@ -128,7 +134,7 @@ const startPrompt = `Start, please introduce yourself and what the game is?`;
 const handlerNewCOCChat = async (socket) => {
   console.log("gemini start to run 🤖")
   const userId = socket.user._id;
-  const userLanguage = socket.user.language;
+  const userLanguage = language_code[socket.user.language] || language_code["en"];
 
   if (!(IsCOCSinglePlayOpen || Boolean(socket.user.isAdmin) || Boolean(socket.user.isTester))) {
     socket.emit("game:created", {
@@ -196,8 +202,8 @@ const handlerNewCOCChat = async (socket) => {
 const handlerUserMessageCOCChat = async (data, user, role) => {
   console.log("Gemini start reading")
   const { gameId, message } = data;
-  const userId = user._id;
-  const language = user.language;
+  const userId = user._id; 
+  const language = language_code[user.language] || language_code["en"];
   if (!message || message.length === 0) {
     io.to(gameId).emit("message:error", { error: { message: "empty input" } })
     return;
@@ -246,17 +252,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
     console.log("hasCharacter: ", hasCharacter);
 
-    if (!hasCharacter) {
-      availableTools["saveCharacterStatus"] = saveCharacterTool.saveCharacterStatus;
-      availableTools["rollCharacterStatus"] = rollDiceTool.rollCharacterStatus;
-      functionDeclarations = [
-        ...functionDeclarations,
-        ...[
-          rollDiceTool.rollCharacterStatusDeclaration,
-          saveCharacterTool.saveCharacterStatusDeclaration,
-        ],
-      ];
-    } else {
+    if (hasCharacter) {
       availableTools["updateCharacterStats"] = updateCharacterStatsTool.updateCharacterStats;
       availableTools["generateBackgroundImage"] = backgroundImageTool.generateBackgroundImage;
       functionDeclarations = [
@@ -264,6 +260,18 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
         ...[
           updateCharacterStatsTool.updateCharacterStatsDeclaration,
           backgroundImageTool.generateBackgroundImageDeclaration,
+        ],
+      ];
+    } else {
+      availableTools["saveCharacterStatus"] = saveCharacterTool.saveCharacterStatus;
+      availableTools["allocateCharacterPoint"] = allocatePointTool.allocateCharacterPoint;
+      availableTools["rollCharacterStatus"] = rollDiceTool.rollCharacterStatus;
+      functionDeclarations = [
+        ...functionDeclarations,
+        ...[
+          rollDiceTool.rollCharacterStatusDeclaration,
+          saveCharacterTool.saveCharacterStatusDeclaration,
+          allocatePointTool.allocateCharacterPointDeclaration,
         ],
       ];
     }
@@ -306,7 +314,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             config: { 
               tools: [{ functionDeclarations }],
               systemInstruction: hasCharacter ? 
-              COCSinglePlayHasCharacterSystemPrompt + `please generate all response with **${language}**` + JSON.stringify(game.backgroundImages) : 
+              COCSinglePlayHasCharacterSystemPrompt + `please generate all response with **${language}**\n現有的埸景:${Object.keys(game.backgroundImages).map((item) => item+',')}`: 
               COCSinglePlayHasNotCharacterSystemPrompt + `please generate all response with **${language}**`,
             }
           })
@@ -364,6 +372,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             args["gameId"] = gameId;
             args["game"] = game;
             args["characterId"] = character?._id || null;
+            args["language_code"] = user.language
 
             const { toolResult, functionMessage } = await availableTools[name](args);
 
