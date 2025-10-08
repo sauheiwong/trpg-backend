@@ -21,7 +21,7 @@ const allocateCharacterPoint = async({ gameId, language_code }) => {
         allAttributes.forEach((element) => {
             items[element._id] = {
                 key: element.key[displayLanguage],
-                value: element.baseValue,
+                value: element.baseValue+"",
                 minValue: element.minValue,
                 maxValue: element.maxValue,
                 editable: element.editable,
@@ -61,7 +61,7 @@ const allocateCharacterPoint = async({ gameId, language_code }) => {
 const allocateCharacterPointDeclaration = {
   name: "allocateCharacterPoint",
   description:
-    "當玩家沒有角色，並希望透過點數購買的方式來創建新角色時，使用此工具為玩家創造出介面。",
+    "當玩家沒有角色，並希望透過點數購買的方式來創建新角色時，使用此工具為玩家創造出介面。此工具也會隨機生成幸運值。",
 };
 
 export default {

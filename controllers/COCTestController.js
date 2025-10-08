@@ -28,7 +28,7 @@ const modalTest = async(req, res) => {
     allAttributes.forEach((element) => {
         items[element._id] = {
             key: element.key[languages_code],
-            value: element.baseValue,
+            value: element.baseValue+"",
             minValue: element.minValue,
             maxValue: element.maxValue,
             editable: element.editable,

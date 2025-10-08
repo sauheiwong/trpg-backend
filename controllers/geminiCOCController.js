@@ -18,6 +18,7 @@ import triggerSummarizationTool from "../tools/COC/triggerSummarizationTool.js";
 import updateCharacterStatsTool from "../tools/COC/updateCharacterStatsTool.js";
 import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
 import allocatePointTool from "../tools/COC/allocatePointTool.js";
+import skillPointTool from "../tools/COC/skillPointTool.js";
 
 const tokenLimit = 4*10**4; // 40,000
 const MAX_TURNS = 5;
@@ -33,7 +34,7 @@ const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePla
   "persona": "專業、友善、高效的CoC TRPG守密人(KP)。",
   "primary_goal": "引導無角色玩家完成創角流程。",
   "decision_flow": {
-    "no_character": "嚴格遵循: 1.熱情歡迎並解釋創角選項(隨機擲骰/點數購買)，詢問偏好。 2.若玩家選'隨機擲骰'並要求代勞，必須立即且唯一地使用 'rollCharacterStatus'工具，禁止事前對話，直接呈現JSON結果後再解釋。 3.若玩家選'點數購買'，必須立即且唯一地使用'allocateCharacterPoint'。4. 在問職業之前 要先問想要的故事時代背景和地點 因為不同時代 有不同的職業。5. 技能要分為職業技能和興趣技能，職業技能要和角色職業高度相關，興趣技能就不用。6. 玩家選擇職業之後，要提供推薦技能，並附上每個技能的基礎值。 7.玩家確認完成後，必須使用'saveCharacterStatus'工具儲存。"
+    "no_character": "嚴格遵循: 1.熱情歡迎並解釋創角選項(隨機擲骰/點數購買)，詢問偏好。 2.若玩家選'隨機擲骰'並要求代勞，必須立即且唯一地使用 'rollCharacterStatus'工具，禁止事前對話，直接呈現JSON結果後再解釋。 3.若玩家選'點數購買'，必須立即且唯一地使用'allocateCharacterPoint'。4. 在問職業之前 要先問想要的故事時代背景和地點 因為不同時代 有不同的職業。5. 技能要分為職業技能和興趣技能，職業技能要和角色職業高度相關，興趣技能就不用。6. 當已經得到角色屬性值、職業和故事時代地點背景之後，必須立即且唯一地使用'allocateSkillPoint'。 7.玩家確認完成後，必須使用'saveCharacterStatus'工具儲存。"
   },
   "rules": {
     "tool_usage": {
@@ -266,12 +267,14 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       availableTools["saveCharacterStatus"] = saveCharacterTool.saveCharacterStatus;
       availableTools["allocateCharacterPoint"] = allocatePointTool.allocateCharacterPoint;
       availableTools["rollCharacterStatus"] = rollDiceTool.rollCharacterStatus;
+      availableTools["allocateSkillPoint"] = skillPointTool.allocateSkillPoint
       functionDeclarations = [
         ...functionDeclarations,
         ...[
           rollDiceTool.rollCharacterStatusDeclaration,
           saveCharacterTool.saveCharacterStatusDeclaration,
           allocatePointTool.allocateCharacterPointDeclaration,
+          skillPointTool.allocateSkillPointDeclaration,
         ],
       ];
     }
@@ -314,8 +317,8 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             config: { 
               tools: [{ functionDeclarations }],
               systemInstruction: hasCharacter ? 
-              COCSinglePlayHasCharacterSystemPrompt + `please generate all response with **${language}**\n現有的埸景:${Object.keys(game.backgroundImages).map((item) => item+',')}`: 
-              COCSinglePlayHasNotCharacterSystemPrompt + `please generate all response with **${language}**`,
+              COCSinglePlayHasCharacterSystemPrompt + `please generate all response, **including function call args**, with **${language}**\n已經生成好的埸景:${Object.keys(game.backgroundImages).map((item) => item+',')}\n現在的場景是${game.currentBackgroundImage}`: 
+              COCSinglePlayHasNotCharacterSystemPrompt + `please generate all response, **including function call args**, with **${language}**`,
             }
           })
 
