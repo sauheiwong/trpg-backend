@@ -9,7 +9,7 @@ const characterSchema = new Schema({
     required: true,
   },
   name: { type: String, required: true, trim: true, default: "New Character" },
-  class: { type: String },
+  characterClass: { type: String },
   level: { type: Number, default: 1 },
   hp: { max: Number, current: Number },
   mp: { max: Number, current: Number },

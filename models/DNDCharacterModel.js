@@ -7,7 +7,7 @@ const DNDCharacterSchema = new mongoose.Schema({
   gameId: { type: mongoose.Schema.Types.ObjectId, ref: "Game" },
   name: { type: String, required: true },
   race: { type: String, required: true },
-  class: { type: String, required: true },
+  characterClass: { type: String, required: true },
   level: { type: Number, default: 1 },
   background: { type: String },
   alignment: { type: String },

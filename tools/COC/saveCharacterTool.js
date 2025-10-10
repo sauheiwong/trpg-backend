@@ -84,7 +84,7 @@ const saveCharacterStatusDeclaration = {
         type: Type.STRING,
         description: "角色的名字",
       },
-      class: {
+      characterClass: {
         type: Type.STRING,
         description: "角色的職業",
       },
@@ -193,7 +193,7 @@ const saveCharacterStatusDeclaration = {
     },
     required: [
       "name",
-      "class",
+      "characterClass",
       "hp",
       "mp",
       "san",

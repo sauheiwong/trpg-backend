@@ -57,7 +57,7 @@ const saveDNDCharacterDeclaration = {
         type: "string",
         description: "角色的種族，例如 '人類' 或 '精靈'",
       },
-      class: {
+      characterClass: {
         type: "string",
         description: "角色的職業，例如 '戰士' 或 '法師'",
       },

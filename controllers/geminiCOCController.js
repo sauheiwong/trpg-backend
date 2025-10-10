@@ -29,31 +29,28 @@ const LLM_NAME = "gemini-2.5-flash-preview-09-2025";
 await configService.loadConfig(true);
 
 const IsCOCSinglePlayOpen = Boolean(configService.get("IsCOCSinglePlayOpen", false));
-const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePlayHasNotCharacterSystemPrompt", `你必須嚴格遵循以下的JSON指令塊來扮演CoC KP的角色：
-{
-  "persona": "專業、友善、高效的CoC TRPG守密人(KP)。",
-  "primary_goal": "引導無角色玩家完成創角流程。",
-  "decision_flow": {
-    "no_character": "嚴格遵循: 1.熱情歡迎並解釋創角選項(隨機擲骰/點數購買)，詢問偏好。 2.若玩家選'隨機擲骰'並要求代勞，必須立即且唯一地使用 'rollCharacterStatus'工具，禁止事前對話，直接呈現JSON結果後再解釋。 3.若玩家選'點數購買'，必須立即且唯一地使用'allocateCharacterPoint'。4. 在問職業之前 要先問想要的故事時代背景和地點 因為不同時代 有不同的職業。5. 技能要分為職業技能和興趣技能，職業技能要和角色職業高度相關，興趣技能就不用。6. 當已經得到角色屬性值、職業和故事時代地點背景之後，必須立即且唯一地使用'allocateSkillPoint'。 7.玩家確認完成後，必須使用'saveCharacterStatus'工具儲存。"
+const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePlayHasNotCharacterSystemPrompt", `{
+  "profile": {
+    "role": "專業、友善、高效的 CoC 守密人 (KP)。",
+    "task": "引導新玩家完成角色創建流程。"
   },
+  "character_creation_workflow": [
+    "1. 歡迎玩家，提供屬性生成選項：「隨機擲骰」或「點數購買」。",
+    "2. 若選「隨機擲骰」：立即使用 "rollCharacterStatus()" 工具。必須先展示工具回傳的結果，之後才可進行對話解釋。",
+    "3. 若選「點數購買」：立即使用 "allocateCharacterPoint()" 工具。",
+    "4. 屬性確定後：依序詢問故事的「時代」與「地點」，然後才詢問角色的「職業」。",
+    "5. 解說技能點：分為與職業高度相關的「職業技能點」，以及自由選擇的「興趣技能點」。",
+    "6.  屬性、職業、背景齊備後：禁止直接向玩家展示技能列表或計算點數。你必須在內部自行判斷該職業的技能列表及其基礎值，計算總點數，然後立即用這些資訊呼叫 allocateSkillPoint 工具。",
+    "7. 玩家最終確認角色無誤後：使用 "saveCharacterStatus()" 工具儲存資料。"
+  ],
   "rules": {
-    "tool_usage": {
-      "no_fake_rolls": true,
-      "character_creation": "必須使用 'rollCharacterStatus'",
-      "ingame_checks": "必須使用 'rollSingleDice'"
-    }
+    "tools": "必須嚴格依照 workflow 中指定的時機使用指定工具，禁止虛構任何擲骰或計算結果。"
   },
-  "knowledge_base": {
+  "reference_data": {
     "attributes": {
-      "STR": {"roll": "(3d6)*5", "buy_range": "15-90"},
-      "CON": {"roll": "(3d6)*5", "buy_range": "15-90"},
-      "SIZ": {"roll": "(2d6+6)*5", "buy_range": "15-90"},
-      "DEX": {"roll": "(3d6)*5", "buy_range": "15-90"},
-      "APP": {"roll": "(3d6)*5", "buy_range": "15-90"},
-      "INT": {"roll": "(2d6+6)*5", "buy_range": "15-90"},
-      "POW": {"roll": "(3d6)*5", "buy_range": "15-90"},
-      "EDU": {"roll": "(2d6+6)*5", "buy_range": "15-90"},
-      "LUCK": {"roll": "(3d6)*5", "buy_range": "N/A"}
+      "STR": "(3d6)*5", "CON": "(3d6)*5", "SIZ": "(2d6+6)*5", "DEX": "(3d6)*5",
+      "APP": "(3d6)*5", "INT": "(2d6+6)*5", "POW": "(3d6)*5", "EDU": "(2d6+6)*5",
+      "LUCK": "(3d6)*5"
     },
     "derived_stats": {
       "HP": "floor((SIZ+CON)/10)",
@@ -64,7 +61,8 @@ const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePla
       "occupation": "依職業公式計算 (例: 作家=EDU*4, 運動員=EDU*2+STR*2, 根據職業所長為EDU*2+XXX*2)",
       "interest": "INT*2"
     }
-  }}`); 
+  }
+}`); 
 const COCSinglePlayHasCharacterSystemPrompt = configService.get("COCSinglePlayHasCharacterSystemPrompt", `{
   "profile": {
     "identity": "專業、友善且高效的《克蘇魯的呼喚》TRPG 守密人 (KP)。",
@@ -104,7 +102,7 @@ const COCSinglePlayHasCharacterSystemPrompt = configService.get("COCSinglePlayHa
     },
     "tool_usage": {
       "rollSingleDice": "這是所有擲骰（玩家、NPC、環境）的【唯一】方式，確保公平。若需暗骰，加入參數 'secret: true'。",
-      "generateBackgroundImage": "當角色抵達新的重要場景時，【必須立即使用】。",
+      "generateBackgroundImage": "當角色抵達新的重要場景、故事一開始或者沒有背景圖時，【必須立即使用】。",
       "san_check": "當角色遭遇超自然或衝擊性真相時觸發。擲 1D100 對抗當前 SAN 值。成功則損失較少理智（如 1/1D4），失敗則損失較多（如 1D4/1D10）。若檢定失敗，可短暫控制角色描述其瘋狂或幻覺。"
     },
     "player_agency": "嚴守玩家代理權，絕不替玩家角色（PL）做決定。你控制所有非玩家角色（NPC）及其動機。"
@@ -267,7 +265,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       availableTools["saveCharacterStatus"] = saveCharacterTool.saveCharacterStatus;
       availableTools["allocateCharacterPoint"] = allocatePointTool.allocateCharacterPoint;
       availableTools["rollCharacterStatus"] = rollDiceTool.rollCharacterStatus;
-      availableTools["allocateSkillPoint"] = skillPointTool.allocateSkillPoint
+      availableTools["allocateSkillPoint"] = skillPointTool.allocateSkillPoint;
       functionDeclarations = [
         ...functionDeclarations,
         ...[
@@ -303,6 +301,8 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
     let totalInputToken = 0;
 
+    const existBackgroundImages = Object.keys(game.backgroundImages).map((item) => item+',')
+
     // retry system
     let lastError = null;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++){
@@ -317,7 +317,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             config: { 
               tools: [{ functionDeclarations }],
               systemInstruction: hasCharacter ? 
-              COCSinglePlayHasCharacterSystemPrompt + `please generate all response, **including function call args**, with **${language}**\n已經生成好的埸景:${Object.keys(game.backgroundImages).map((item) => item+',')}\n現在的場景是${game.currentBackgroundImage}`: 
+              COCSinglePlayHasCharacterSystemPrompt + `please generate all response, **including function call args**, with **${language}**\n已經生成好的埸景:${ existBackgroundImages.length !== 0 ? existBackgroundImages : "null"}\n現在的場景是${game.currentBackgroundImage || "null"}`: 
               COCSinglePlayHasNotCharacterSystemPrompt + `please generate all response, **including function call args**, with **${language}**`,
             }
           })
@@ -420,7 +420,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             } else {
               modelResponseText = modelResponseTextPart[0].text;
             }
-            console.log("Model Resonse Text: ", modelResponseText);
+            // console.log("Model Resonse Text: ", modelResponseText);
 
             if (!modelResponseText || modelResponseText.trim() === "" ) {
               console.error("Error ⚠️: Gemini returned an empty response.");
@@ -450,7 +450,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
         }
       } catch (error) {
         lastError = error;
-        if (error.message.includes("500") || error.message.includes("503")) {
+        if (error.message.includes("500") || error.message.includes("503") || result[0].finshReason === "MALFORMED_FUNCTION_CALL") {
           if (attempt === MAX_RETRIES - 1) {
             console.error("Error ⚠️: Gemini API meet max retries. Stop retry");
             io.to(gameId).emit("message:error", { error: retryMessages[`${attempt}`] })
@@ -467,7 +467,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
           await new Promise(resolve => setTimeout(resolve, waitTime));
         } else {
-          console.log(`Non retry Error ⚠️: ${error.message}`);
+          console.log(`Non retry Error ⚠️:\n${JSON.stringify(error, null, 2)}`);
           throw error
         }
       }

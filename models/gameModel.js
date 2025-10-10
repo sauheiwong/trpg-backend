@@ -16,6 +16,7 @@ const gameSchema = new Schema({
     ref: "COCCharacter",
   },
   memo: { type: String, default: "" },
+  // save this for future improvement
   gameState: { 
     type: mongoose.Schema.Types.Mixed,
     default: {

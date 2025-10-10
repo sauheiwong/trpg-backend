@@ -191,7 +191,7 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
 // It tells the Gemini model what the function does and what parameters it needs.
 const generateBackgroundImageDeclaration = {
     name: "generateBackgroundImage",
-    description: "生成場景背景圖。當劇情轉換場景時自行使用。",
+    description: "生成場景背景圖。當劇情轉換場景或者沒有背景圖時自行使用。",
     parameters: {
         type: Type.OBJECT,
         properties: {

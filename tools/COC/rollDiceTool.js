@@ -70,7 +70,7 @@ const rollSingleDice = async({ actor, reason, dice, success, secret, gameId }) =
   }
 
   // Create a descriptive message summarizing the action and outcome.
-  let message = `rollSingleDice:\n${JSON.stringify(responseData, null, 2)}\nsuccess limit is: ${success}, so ${rollResult.result <= success ? "SUCCESS" : "FAIL"}`
+  let message = `rollSingleDice:\n${JSON.stringify(responseData, null, 2)}`
   const followingMessage = "Gemini is handling the result..."
 
   // Check if the roll is meant to be secret.
@@ -164,8 +164,7 @@ const rollCharacterStatus = async({ gameId }) => {
 // This is the schema definition for the 'rollCharacterStatus' tool.
 const rollCharacterStatusDeclaration = {
   name: "rollCharacterStatus",
-  description:
-    "當玩家沒有角色，並希望透過隨機擲骰的方式來創建新角色時，使用此工具生成角色的初始六大屬性（力量、敏捷、體質等）。",
+  description: "當玩家沒有角色，並希望透過隨機擲骰的方式來創建新角色時，使用此工具生成角色的初始六大屬性（力量、敏捷、體質等）。",
 };
 
 export default {
