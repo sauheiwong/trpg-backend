@@ -22,17 +22,37 @@ const triggerSummarization = async(game, messages, language) => {
     const character = await COCCharacterModel.findById(game.characterId)
 
     const contentToSummarize = `
-    # 角色描述:
-    ${character.description}
-    # 舊的摘要:
-    ${game.KPmemo || '無'}
+你是一個 TRPG 遊戲的檔案管理員。請閱讀以下的 JSON 格式的舊遊戲檔案以及最新的對話紀錄。你的任務是生成一個**新的 JSON 物件**來更新遊戲狀態。
 
-    # 需要被摘要的新對話:
-    ${messagesToSummarize.map(m => `${m.role}: ${m.content}`).join('\n')}
-    `
+# 舊的遊戲檔案 (JSON):
+${JSON.stringify(game.KPmemo, null, 2)}
 
+# 需要被摘要的新對話:
+${messagesToSummarize.map(m => `${m.role}: ${m.content}`).join('\n')}
+
+# 你的任務:
+根據新對話，生成一個全新的 JSON 物件。請嚴格遵守以下規則：
+
+1.  **"goldenFacts" (核心事實)**: 
+    - 複製舊檔案中的所有 "goldenFacts"。
+    - 檢查新對話中是否有**足以成為核心事實的全新重大事件**。如果有的話，將其作為新的字串**附加**到 "goldenFacts" 陣列的末尾。如果沒有，則保持原樣。
+
+2.  **"recentEvents" (近期事件)**:
+    - **完全忽略**舊檔案中的 "recentEvents"。
+    - 根據新對話的內容，重新生成一份涵蓋最近 1-3 個場景的簡潔摘要。
+
+3.  **"npcRelationships" (NPC 關係)**:
+    - **完全忽略**舊檔案中的 "npcRelationships"。
+    - 根據新對話和已有的核心事實，重新生成一份所有關鍵 NPC 的最新狀態和關係描述。
+
+**輸出格式必須是嚴格的 JSON。**
+`
     const summaryPrompt = `
-    你是一個TRPG遊戲的紀錄員。請閱讀以下舊的摘要和完整的對話歷史，生成一段新的、精簡的、涵蓋所有關鍵劇情點的摘要，要包括故事的目標、地點、時代、NPC、NPC們與主角的關係和名字。不需要包含主角資料，因為KP有主角的角色卡。必須使用**${language}**來生成摘要。`
+**指示**：
+- 在更新檔案時，**絕對不能刪除或修改 [核心事實]** 中已確立的事件，只能補充新的重大發現。
+- [近期事件] 應專注於最新的對話內容。
+- **語言**：必須使用 **${language}** 來生成摘要。
+`
 
     const result = await ai.models.generateContent({
         model: "gemini-2.5-flash",

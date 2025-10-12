@@ -68,7 +68,6 @@ const getAvailableCharacter = async (req, res) => {
       name,
       req.user._id
     );
-    console.log("number of available character is: ", characters.length);
     return res.status(200).send({ characters });
   } catch (error) {
     return errorReturn(res, error);

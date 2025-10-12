@@ -16,7 +16,7 @@ const createGame = async (userId) => {
   }
 };
 
-const getGameById = async (gameId, userId) => {
+const getGameById = async (gameId, userId, options) => {
   try {
     if (!gameId) {
       throw errorStatus("miss game id", 400);
@@ -45,8 +45,6 @@ const getGameById = async (gameId, userId) => {
     const character = await COCCharacterModel.findById(game.characterId);
 
     return {
-      title: game.title,
-      memo: game.memo,
       messages,
       character,
       game,
