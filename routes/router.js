@@ -3,7 +3,6 @@ import passport from "passport";
 
 import userController from "../controllers/userController.js";
 import gameCOCController from "../controllers/gameCOCController.js";
-import COCTestController from "../controllers/COCTestController.js";
 import gameDNDController from "../controllers/gameDNDController.js";
 // import geminiCOCController from "../controllers/geminiCOCController.js";
 import geminiDNDController from "../controllers/geminiDNDController.js";
@@ -11,6 +10,8 @@ import geminiDNDController from "../controllers/geminiDNDController.js";
 import rollDiceController from "../controllers/rollDiceController.js";
 // import COCCharacterController from "../controllers/COCCharacterController.js";
 // import characterChatController from "../controllers/characterChatController.js";
+
+import summaryTest from "../scripts/COC/summaryTest.js";
 
 export const router = Router();
 
@@ -56,8 +57,7 @@ router.get("/api/game/:id", requireAuth, gameCOCController.getGameById);
 
 // router.get("/api/game/test/characterUpdate/:id", requireAuth, COCTestController.characterUpdate)
 
-router.get("/api/game/test/modalTest/:id", requireAuth, COCTestController.modalTest)
-
+router.get("/api/game/test/summary", requireAuth, summaryTest.summaryTest)
 
 // router.get(
 //   "/api/coc/characters",

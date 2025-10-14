@@ -473,7 +473,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       }
     console.log(`totalInputToken: ${totalInputToken}`);
     if (totalInputToken > triggerLimit) {
-      await triggerSummarizationTool.triggerSummarization(game, messages, language)
+      await triggerSummarizationTool.triggerSummarization({game, messages, character, language})
     }
     return;
     }
