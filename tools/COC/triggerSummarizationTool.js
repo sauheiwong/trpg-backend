@@ -8,7 +8,8 @@ import COCGameSummaryModel from "../../models/COCGameSummaryModel.js";
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API });
 
 const buffer = 10;
-const MAX_TURNS = 5;
+const MAX_RETRIES = 5;
+const model = 'gemini-2.5-flash-preview-09-2025';
 
 
 const summarySchema = {
@@ -32,7 +33,9 @@ const summarySchema = {
                 properties: {
                     name: { type: Type.STRING },
                     description: { type: Type.STRING }
-                }
+                },
+                required: ["name", "description"]
+                
             }
         }
     },
@@ -57,35 +60,38 @@ const triggerSummarization = async({game, messages, character, language}) => {
                 summary = await COCGameSummaryModel.create({ gameId: game._id });
             }
 
-        const contentToSummarize = `你是一個 TRPG 遊戲的檔案管理員。請閱讀以下的 JSON 格式的舊遊戲檔案以及最新的對話紀錄。你的任務是生成一個**新的 JSON 物件**來更新遊戲狀態。
+            const contentToSummarize = `你是一位專業的 TRPG 遊戲記錄分析師。你的任務是閱讀舊的遊戲摘要和一段新的對話，然後根據指定的 JSON 結構，精準地提取和生成資訊。
 
-# 舊的遊戲檔案 (JSON):
-${JSON.stringify(summary, null, 2)}
+# 舊摘要 (僅供參考):
+${JSON.stringify(summary.summary, null, 2)}
 
-# 主角角色描述:
+# 主角角色描述 (僅供參考):
 ${character.description}
 
-# 需要被摘要的新對話:
+# 新對話 (主要分析目標):
 ${messagesToSummarize.map(m => `${m.role}: ${m.content}`).join('\n')}
 
 # 你的任務:
-根據新對話，生成一個全新的 JSON 物件。請嚴格遵守以下規則：
+請**僅分析「新對話」**，並根據以下規則填充 JSON 欄位。你的輸出必須嚴格遵守要求的 JSON Schema。
 
-1.  **"goldenFacts" (核心事實)**: 
-    - 複製舊檔案中的所有 "goldenFacts"。
-    - 檢查新對話中是否有**足以成為核心事實的全新重大事件**。如果有的話，將其作為新的字串**附加**到 "goldenFacts" 陣列的末尾。如果沒有，則保持原樣。
+1.  **"goldenFacts"**: 
+    分析**「新對話」**，從中提取出足以成為核心設定或不可逆轉的**全新重大事件**。
+    - **只回傳新發現的事件**。
+    - 如果沒有新的重大事件發生，請回傳一個空陣列 []。
+    - **絕對不要**包含「舊摘要」中已經存在的事實。
 
-2.  **"recentEvents" (近期事件)**:
-    - **完全忽略**舊檔案中的 "recentEvents"。
-    - 根據新對話的內容，重新生成一份涵蓋最近 1-3 個場景的簡潔摘要。
+2.  **"recentEvents"**:
+    **完全基於「新對話」**的內容，撰寫一段精簡的摘要，描述最近發生的關鍵情節、場景或互動。
 
-3.  **"npcDescription" (NPC 關係)**:
-    - **完全忽略**舊檔案中的 "npcDescription"。
-    - 根據新對話和已有的核心事實，重新生成一份所有關鍵 NPC 的最新狀態和描述。
+3.  **"npcDescription"**:
+    綜合參考「舊摘要」和「新對話」，**重新生成一份完整且最新的 NPC 列表**。
+    - 這份列表應包含所有已登場的關鍵人物。
+    - 更新那些在「新對話」中狀態或關係有變化的 NPC。
+    - 確保 NPC 列表是全面的，不要因為 NPC 沒在「新對話」中出現就遺漏他。
 
-**輸出格式必須是嚴格的 JSON。**
+你的輸出將被程式直接解析，請專注於提供準確的數據。
 `
-        const summaryPrompt = `**指示**：
+            const summaryPrompt = `**指示**：
 - 在更新檔案時，**絕對不能刪除或修改 [核心事實]** 中已確立的事件，只能補充新的重大發現。
 - [近期事件] 應專注於最新的對話內容。
 - **語言**：必須使用 **${language}** 來生成摘要。
@@ -94,7 +100,7 @@ ${messagesToSummarize.map(m => `${m.role}: ${m.content}`).join('\n')}
             // console.log(`contentToSummarize:\n${contentToSummarize}`);
 
             const result = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: model,
                 contents: [{ role: "user", parts: [{ text: contentToSummarize }]}],
                 config:{
                     systemInstruction: summaryPrompt,
@@ -139,14 +145,17 @@ ${messagesToSummarize.map(m => `${m.role}: ${m.content}`).join('\n')}
 
             console.log(`game ${game._id} summrization success. New anchor is at index ${newAnchorIndex}`)
 
-            io.to(game._id).emit("systemMessage:received", { message: "New summary have been created" })
+            io.to(game._id.toString()).emit("system:message", { message: "New summary have been created" })
+            io.to(game._id.toString()).emit("summary:updated", { newSummary: {
+                ...newSummary,
+                goldenFacts: summary.summary.goldenFacts,
+            } })
             return;
         } catch (e) {
             console.error(`Error⚠️: fail to generate a new summary: ${e}`)
             return;
         }
     }
-    
 }
 
 export default {

@@ -32,7 +32,7 @@ const allocateSkillPoint = async({ gameId, occupationSkills, totalPoint }) => {
             items
         };
 
-        io.to(gameId).emit("formAvailable:received", { formData });
+        io.to(gameId).emit("form:prompt", { formData });
         return { toolResult: {
                 result: "success",
                 message: "Please tell player to kick the infor icon on the right top."
@@ -41,7 +41,7 @@ const allocateSkillPoint = async({ gameId, occupationSkills, totalPoint }) => {
         };
     } catch (e) {
         const errorMessage = `Error⚠️: fail to create an UI: ${e.message}`
-        io.to(gameId).emit("systemMessage:received", { message: errorMessage })
+        io.to(gameId).emit("system:message", { message: errorMessage })
         return {
             toolResult: {
                 result: "error",

@@ -7,6 +7,7 @@ import { JSDOM } from "jsdom";
 
 import { errorStatus } from "./errorHandlers.js";
 import COCCharacterModel from "../models/COCCharacterModel.js";
+import COCGameSummaryModel from "../models/COCGameSummaryModel.js";
 
 const createGame = async (userId) => {
   try {
@@ -44,10 +45,13 @@ const getGameById = async (gameId, userId, options) => {
 
     const character = await COCCharacterModel.findById(game.characterId);
 
+    const summary = await COCGameSummaryModel.findOne({ gameId }).select("summary")
+
     return {
       messages,
       character,
       game,
+      summary,
     };
   } catch (error) {
     throw error;

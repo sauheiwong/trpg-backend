@@ -44,7 +44,7 @@ const allocateCharacterPoint = async({ gameId, language_code }) => {
             },
             items
         }
-        io.to(gameId).emit("formAvailable:received", { formData })
+        io.to(gameId).emit("form:prompt", { formData })
         return { toolResult: {
                 result: "success",
                 message: `LUCK is: ${LUCK_value}.Please tell player to kick the infor icon on the right top. After you get the occupation of character and the place and time of the plot, please use 'allocateSkillPoint' to create another UI for player.`
@@ -53,7 +53,7 @@ const allocateCharacterPoint = async({ gameId, language_code }) => {
         };
     } catch (e) {
         const errorMessage = `Error⚠️: fail to create an UI: ${e.message}`
-        io.to(gameId).emit("systemMessage:received", { message: errorMessage })
+        io.to(gameId).emit("system:message", { message: errorMessage })
         return {
             toolResult: {
                 result: "error",

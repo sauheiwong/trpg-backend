@@ -76,11 +76,11 @@ const rollSingleDice = async({ actor, reason, dice, success, secret, gameId }) =
   // Check if the roll is meant to be secret.
   if (!secret){
     // If public, emit the full result to all clients in the specified game room.
-    io.to(gameId).emit("systemMessage:received", { message, followingMessage });
+    io.to(gameId).emit("system:message", { message, followingMessage });
   } else {
     // If secret, emit a generic message to clients, hiding the actual result.
     message = "KP roll a secret dice."
-    io.to(gameId).emit("systemMessage:received", { message, followingMessage });
+    io.to(gameId).emit("system:message", { message, followingMessage });
   }
 
   // Return the result to the Gemini model so it can continue its reasoning.
@@ -155,7 +155,7 @@ const rollCharacterStatus = async({ gameId }) => {
   const followingMessage = "Gemini is handling the result"
 
   // Emit the result to all clients in the specified game room.
-  io.to(gameId).emit("systemMessage:received", { message, followingMessage })
+  io.to(gameId).emit("system:message", { message, followingMessage })
   
   // Return the generated attributes to the Gemini model.
   return { toolResult: result, functionMessage: message };

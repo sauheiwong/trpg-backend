@@ -55,7 +55,7 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
         console.log(`[Image Gen] Existing image found for ${name}: ${existingImageUrl}`);
         const reuseMessageContent = `Reusing existing background image for ${name}.`;
         // Notify all clients in the game room about the reused image.
-        io.to(gameId).emit("systemMessage:received", { message: reuseMessageContent });
+        io.to(gameId).emit("system:message", { message: reuseMessageContent });
         // Send a specific event for the UI to update the background image directly.
         io.to(gameId).emit("backgroundImage:updated", { imageUrl: existingImageUrl });
 
@@ -89,7 +89,7 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
     // 2. If no existing image is found, proceed with generation.
     // Notify clients that the image generation process has started.
     const systemMessageContent = `generateBackgroundImage: ${imagePrompt}`;
-    io.to(gameId).emit("systemMessage:received", { message: systemMessageContent, followingMessage: "Gemini is drawing now...🖌️" });
+    io.to(gameId).emit("system:message", { message: systemMessageContent, followingMessage: "Gemini is drawing now...🖌️" });
 
     try {
         console.log(`[Image Gen] [COC GameId: ${gameId}] - Starting generation...`);
@@ -106,7 +106,7 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
         // [FIX 1] Check if the response contains any generated images.
         if (!response.generatedImages || response.generatedImages.length === 0) {
             console.error("Error ⚠️: Image generation API returned no images.");
-            io.to(gameId).emit("systemMessage:received", { message: "Image generation failed. The prompt might have been rejected by the safety filter." });
+            io.to(gameId).emit("system:message", { message: "Image generation failed. The prompt might have been rejected by the safety filter." });
             return {
                 toolResult: {
                 result: "error",
@@ -159,7 +159,7 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
         // 7. Prepare a success message with the image embedded in Markdown format.
         const successMessageContent = `Success to generate a background image!\n![background](${imageUrl})`;
         
-        io.to(gameId).emit("systemMessage:received", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing..."});
+        io.to(gameId).emit("system:message", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing..."});
         
         // Send a dedicated event for the UI to easily update the background.
         io.to(gameId).emit("backgroundImage:updated", {

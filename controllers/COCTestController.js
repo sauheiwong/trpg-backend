@@ -5,7 +5,7 @@ import AttributeDefinitionSchema from "../models/AttibuteDefinition.js"
 
 const characterUpdate = (req, res) => {
     const gameId = req.params.id;
-    io.to(gameId).emit("newCharacter:received", { newCharacter: null })
+    io.to(gameId).emit("character:updated", { newCharacter: null })
     return res.status(200).send({ message: "ok"});
 }
 
@@ -45,7 +45,7 @@ const modalTest = async(req, res) => {
         },
         items
     }
-    io.to(gameId).emit("formAvailable:received", { formData })
+    io.to(gameId).emit("form:prompt", { formData })
     return res.status(200).send({ message: "ok"});
 }
 

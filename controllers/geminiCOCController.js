@@ -101,7 +101,7 @@ const COCSinglePlayHasCharacterSystemPrompt = configService.get("COCSinglePlayHa
       }
     },
     "tool_usage": {
-      "rollSingleDice": "這是所有擲骰（玩家、NPC、環境）的【唯一】方式，確保公平。若需暗骰，加入參數 'secret: true'。",
+      "rollSingleDice": "這是所有擲骰（玩家、NPC、環境）的【唯一】方式，確保公平。若需暗骰(例如: 心理學)，加入參數 'secret: true'。",
       "generateBackgroundImage": "當角色抵達新的重要場景、故事一開始或者沒有背景圖時，【必須立即使用】。",
       "san_check": "當角色遭遇超自然或衝擊性真相時觸發。擲 1D100 對抗當前 SAN 值。成功則損失較少理智（如 1/1D4），失敗則損失較多（如 1D4/1D10）。若檢定失敗，可短暫控制角色描述其瘋狂或幻覺。"
     },
@@ -359,7 +359,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               }
             })
 
-            io.to(gameId).emit("systemMessage:received", {message: `Gemini use ${name} function`, followingMessage: "Gemini is waiting the result☕"})
+            io.to(gameId).emit("system:message", {message: `Gemini use ${name} function`, followingMessage: "Gemini is waiting the result☕"})
 
             newMessgesId.push(modelFunctionCallMessage._id)
 
@@ -456,7 +456,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             io.to(gameId).emit("message:error", { error: retryMessages[`${attempt}`] })
             throw new Error ("Error ⚠️: Gemini fail to use function call🤦")
           }
-          io.to(gameId).emit("systemMessage:received", { message: retryMessages[`${attempt}`], keepLoading: true })
+          io.to(gameId).emit("system:message", { message: retryMessages[`${attempt}`], keepLoading: true })
 
           const delay = INITAIL_DELAY_MS * Math.pow(2, attempt);
           const jitter = Math.random() * 1000;

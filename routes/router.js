@@ -26,7 +26,7 @@ router.post(
 
 // login and logout
 router.post("/api/login", userController.validateLogin, userController.login);
-router.get("/api/logout", userController.logout);
+router.post("/api/logout", userController.logout);
 
 // user setting
 router.get("/api/user", requireAuth, userController.getUser);
@@ -57,7 +57,7 @@ router.get("/api/game/:id", requireAuth, gameCOCController.getGameById);
 
 // router.get("/api/game/test/characterUpdate/:id", requireAuth, COCTestController.characterUpdate)
 
-router.get("/api/game/test/summary", requireAuth, summaryTest.summaryTest)
+// router.get("/api/game/test/summary", requireAuth, summaryTest.summaryTest)
 
 // router.get(
 //   "/api/coc/characters",

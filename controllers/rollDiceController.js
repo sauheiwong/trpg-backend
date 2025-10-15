@@ -45,7 +45,7 @@ const rollDice = async(req, res) => {
 
     console.log("roll result: ", message)
 
-    io.to(gameId).emit("systemMessage:received", { message, followingMessage: "Gemini is handling the result...🖋️" });
+    io.to(gameId).emit("system:message", { message, followingMessage: "Gemini is handling the result...🖋️" });
 
     geminiCOCController.handlerUserMessageCOCChat({ message, gameId }, req.user, "system")
 

@@ -45,7 +45,7 @@ const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId
 
     // 2. Send a "pending" or "in-progress" message to the clients via socket.io.
     const systemMessageContent = `generateCharacterImage: ${imagePrompt})`;
-    io.to(gameId).emit("systemMessage:received", { message: systemMessageContent, followMessage: "Gemini is drawing now...🖌️"});
+    io.to(gameId).emit("system:message", { message: systemMessageContent, followMessage: "Gemini is drawing now...🖌️"});
 
     try {
         console.log(`[Image Gen] [Character: ${characterId}] - Starting generation...`);
@@ -62,7 +62,7 @@ const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId
         // [FIX 1] Check if the response contains any generated images.
         if (!response.generatedImages || response.generatedImages.length === 0) {
             console.error("Error ⚠️: Image generation API returned no images.");
-            io.to(gameId).emit("systemMessage:received", { message: "Image generation failed. The prompt might have been rejected by the safety filter." });
+            io.to(gameId).emit("system:message", { message: "Image generation failed. The prompt might have been rejected by the safety filter." });
             return {
                 toolResult: {
                 result: "error",
@@ -106,7 +106,7 @@ const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId
 
         // 7. Prepare and send a success message to the clients.
         const successMessageContent = `Success to generate an avatar of your character！\n![character avatar](${imageUrl})`;
-        io.to(gameId).emit("systemMessage:received", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing......"});
+        io.to(gameId).emit("system:message", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing......"});
 
         
         // Send a specific, dedicated event for easier UI updates on the client side.

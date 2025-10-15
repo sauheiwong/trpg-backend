@@ -47,9 +47,9 @@ const saveCharacterStatus = async (infor) => {
     });
 
     // Notify all clients in the game room that the character has been saved successfully.
-    io.to(infor.gameId).emit("systemMessage:received", { message: "save character success", followingMessage: "Gemini got the result and thinking..." })
+    io.to(infor.gameId).emit("system:message", { message: "save character success", followingMessage: "Gemini got the result and thinking..." })
 
-    io.to(infor.gameId).emit("newCharacter:received", { newCharacter })
+    io.to(infor.gameId).emit("character:updated", { newCharacter })
 
     // Return a structured result to the Gemini model.
     return { toolResult : {
