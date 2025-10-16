@@ -37,7 +37,7 @@ const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePla
   "character_creation_workflow": [
     "1. 歡迎玩家，提供屬性生成選項：「隨機擲骰」或「點數購買」。",
     "2. 若選「隨機擲骰」：立即使用 "rollCharacterStatus()" 工具。必須先展示工具回傳的結果，之後才可進行對話解釋。",
-    "3. 若選「點數購買」：立即使用 "allocateCharacterPoint()" 工具。",
+    "3. 若選「點數購買」：立即使用 "allocateCharacterPoint()" 工具。玩家填的資料是加到那個數值。",
     "4. 屬性確定後：依序詢問故事的「時代」與「地點」，然後才詢問角色的「職業」。",
     "5. 解說技能點：分為與職業高度相關的「職業技能點」，以及自由選擇的「興趣技能點」。",
     "6.  屬性、職業、背景齊備後：禁止直接向玩家展示技能列表或計算點數。你必須在內部自行判斷該職業的技能列表及其基礎值，計算總點數，然後立即用這些資訊呼叫 allocateSkillPoint 工具。",
@@ -48,8 +48,8 @@ const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePla
   },
   "reference_data": {
     "attributes": {
-      "STR": "(3d6)*5", "CON": "(3d6)*5", "SIZ": "(2d6+6)*5", "DEX": "(3d6)*5",
-      "APP": "(3d6)*5", "INT": "(2d6+6)*5", "POW": "(3d6)*5", "EDU": "(2d6+6)*5",
+      "STR": {"dice": "(3d6)*5", "range": "15-90"}, "CON": {"dice": "(3d6)*5", "range": "15-90"}, "SIZ": {"dice": "(2d6+6)*5", "range": "15-90"}, "DEX": {"dice": "(3d6)*5", "range": "15-90"},
+      "APP": {"dice": "(3d6)*5", "range": "15-90"}, "INT": {"dice": "(2d6+6)*5", "range": "15-90"}, "POW": {"dice": "(3d6)*5", "range": "15-90"}, "EDU": {"dice": "(2d6+6)*5", "range": "15-90"},
       "LUCK": "(3d6)*5"
     },
     "derived_stats": {
@@ -102,7 +102,7 @@ const COCSinglePlayHasCharacterSystemPrompt = configService.get("COCSinglePlayHa
     },
     "tool_usage": {
       "rollSingleDice": "這是所有擲骰（玩家、NPC、環境）的【唯一】方式，確保公平。若需暗骰(例如: 心理學)，加入參數 'secret: true'。",
-      "generateBackgroundImage": "當角色抵達新的重要場景、故事一開始或者沒有背景圖時，【必須立即使用】。",
+      "generateBackgroundImage": "當角色抵達新的場景、故事一開始或者沒有背景圖時，【必須立即使用】。",
       "san_check": "當角色遭遇超自然或衝擊性真相時觸發。擲 1D100 對抗當前 SAN 值。成功則損失較少理智（如 1/1D4），失敗則損失較多（如 1D4/1D10）。若檢定失敗，可短暫控制角色描述其瘋狂或幻覺。"
     },
     "player_agency": "嚴守玩家代理權，絕不替玩家角色（PL）做決定。你控制所有非玩家角色（NPC）及其動機。"
@@ -160,6 +160,12 @@ const handlerNewCOCChat = async (socket) => {
 
     console.log(`input_tokens: ${promptTokenCount} | output_tokens: ${candidatesTokenCount} | thoughtsTokenCount: ${thoughtsTokenCount} | totak_tokens: ${totalTokenCount}`)
 
+    const tokenUsage = {
+      inputTokens: promptTokenCount ?? 0,
+      outputTokens: (candidatesTokenCount ?? 0) + (thoughtsTokenCount ?? 0),
+      totalTokens: totalTokenCount ?? 0,
+    }
+
     const game = await gameHandlers.createGame(userId);
     const gameId = game._id;
     
@@ -169,22 +175,23 @@ const handlerNewCOCChat = async (socket) => {
       role: "model",
       content: modelResponseText,
       usage: {
-        inputTokens: promptTokenCount,
-        outputTokens: candidatesTokenCount + thoughtsTokenCount,
+        inputTokens: tokenUsage.inputTokens,
+        outputTokens: tokenUsage.outputTokens,
       }
     })
 
     await gameModel.findByIdAndUpdate(gameId, {
       $inc: {
-        "tokenUsage.inputTokens": promptTokenCount,
-        "tokenUsage.outputTokens": candidatesTokenCount + thoughtsTokenCount,
-        "tokenUsage.totalTokens": totalTokenCount,
+        "tokenUsage.inputTokens": tokenUsage.inputTokens,
+        "tokenUsage.outputTokens": tokenUsage.outputTokens,
+        "tokenUsage.totalTokens": tokenUsage.totalTokens,
       }
     })
 
     socket.emit("game:created", {
       message: modelResponseText,
-      gameId: gameId
+      gameId: gameId,
+      tokenUsage,
     })
     
     socket.join(gameId);
@@ -204,7 +211,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
   const userId = user._id; 
   const language = language_code[user.language] || language_code["en"];
   if (!message || message.length === 0) {
-    io.to(gameId).emit("message:error", { error: { message: "empty input" } })
+    io.to(gameId).emit("message:error", { error: "empty input" })
     return;
   }
 
@@ -301,12 +308,13 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
     let totalInputToken = 0;
 
-    const existBackgroundImages = Object.keys(game.backgroundImages).map((item) => item+',')
+    const existBackgroundImages = Object.keys(game.backgroundImages).map((item) => item)
 
     // retry system
     let lastError = null;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++){
       console.log(`Gemini API ${attempt + 1} try`);
+      console.log(`current background: ${game.currentBackgroundImage.name} | all background: ${existBackgroundImages.length !== 0 ? existBackgroundImages : "null"}`)
       try {
         // Gemini agent system
         for (let i = 0; i < MAX_TURNS; i++) {
@@ -317,7 +325,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             config: { 
               tools: [{ functionDeclarations }],
               systemInstruction: hasCharacter ? 
-              COCSinglePlayHasCharacterSystemPrompt + `please generate all response, **including function call args**, with **${language}**\n已經生成好的埸景:${ existBackgroundImages.length !== 0 ? existBackgroundImages : "null"}\n現在的場景是${game.currentBackgroundImage || "null"}`: 
+              COCSinglePlayHasCharacterSystemPrompt + `please generate all response, **including function call args**, with **${language}**\n已經生成好的埸景:${ existBackgroundImages.length !== 0 ? existBackgroundImages : "null"}\n現在的場景是${game.currentBackgroundImage.name || "null"}`: 
               COCSinglePlayHasNotCharacterSystemPrompt + `please generate all response, **including function call args**, with **${language}**`,
             }
           })
@@ -325,18 +333,20 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
           console.log(`result: ${JSON.stringify(result.candidates, null, 2)}`)
 
           const { promptTokenCount, candidatesTokenCount, totalTokenCount, thoughtsTokenCount } = result.usageMetadata;
+          
+          const tokenUsage = {
+            inputTokens: promptTokenCount ?? 0,
+            outputTokens: (candidatesTokenCount ?? 0) + (thoughtsTokenCount ?? 0),
+            totalTokens: totalTokenCount ?? 0,
+          }
 
-          const outputTokens = (candidatesTokenCount ?? 0) + (thoughtsTokenCount ?? 0);
-
-          console.log(`input_tokens: ${promptTokenCount} | output_tokens: ${outputTokens} | total_tokens: ${totalTokenCount}`);
-
-          // await gameHandlers.addUsedTokenGameById(gameId, usedToken);
-
+          console.log(`input_tokens: ${tokenUsage.inputTokens} | output_tokens: ${tokenUsage.outputTokens} | total_tokens: ${tokenUsage.totalTokens}`);
+          
           await gameModel.findByIdAndUpdate(gameId, {
             $inc: {
-              "tokenUsage.inputTokens": promptTokenCount ?? 0,
-              "tokenUsage.outputTokens": outputTokens,
-              "tokenUsage.totalTokens": totalTokenCount ?? 0,
+              "tokenUsage.inputTokens": tokenUsage.inputTokens,
+              "tokenUsage.outputTokens": tokenUsage.outputTokens,
+              "tokenUsage.totalTokens": tokenUsage.totalTokens,
             }
           })
 
@@ -354,22 +364,18 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               content: `Gemini use ${name} function`,
               function_call: functionCall,
               usage: {
-                inputTokens: promptTokenCount,
-                outputTokens: outputTokens,
+                inputTokens: tokenUsage.inputTokens,
+                outputTokens: tokenUsage.outputTokens,
               }
             })
 
-            io.to(gameId).emit("system:message", {message: `Gemini use ${name} function`, followingMessage: "Gemini is waiting the result☕"})
+            io.to(gameId).emit("system:message", {message: `Gemini use ${name} function`, followingMessage: "Gemini is waiting the result☕", tokenUsage})
 
             newMessgesId.push(modelFunctionCallMessage._id)
-
 
             if (!availableTools[name]) {
               throw new Error("unknown function call: ", name);
             }
-
-            // console.log("model wants to call a function: ", name);
-            // console.log("white arguments: ", args);
 
             args["userId"] = userId;
             args["gameId"] = gameId;
@@ -379,7 +385,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
             const { toolResult, functionMessage } = await availableTools[name](args);
 
-            console.log("function execution result: ", toolResult);
+            console.log("function execution result: ", JSON.stringify(toolResult, null, 2));
 
             contents.push({
               role: "model",
@@ -420,7 +426,6 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             } else {
               modelResponseText = modelResponseTextPart[0].text;
             }
-            // console.log("Model Resonse Text: ", modelResponseText);
 
             if (!modelResponseText || modelResponseText.trim() === "" ) {
               console.error("Error ⚠️: Gemini returned an empty response.");
@@ -429,7 +434,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
             console.log("Gemini Response Text is valid, saving messages to DB...")
 
-            totalInputToken = promptTokenCount;
+            totalInputToken = tokenUsage.inputTokens;
 
             const modelResponseMessage = await messageModel.create({
               gameId,
@@ -437,23 +442,24 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               role: "model",
               content: modelResponseText,
               usage: {
-                inputTokens: promptTokenCount,
-                outputTokens: outputTokens,
+                inputTokens: tokenUsage.inputTokens,
+                outputTokens: tokenUsage.outputTokens,
               }
             })
 
             newMessgesId.push(modelResponseMessage._id)
 
-            io.to(gameId).emit("message:received", { message: modelResponseText, role: "model" });
+            io.to(gameId).emit("message:received", { message: modelResponseText, role: "model", tokenUsage });
             break;
           }
         }
       } catch (error) {
+        console.log(`Error ⚠️: ${error}`);
         lastError = error;
         if (error.message.includes("500") || error.message.includes("503") || result[0].finshReason === "MALFORMED_FUNCTION_CALL") {
           if (attempt === MAX_RETRIES - 1) {
             console.error("Error ⚠️: Gemini API meet max retries. Stop retry");
-            io.to(gameId).emit("message:error", { error: retryMessages[`${attempt}`] })
+            io.to(gameId).emit("message:error", { error: retryMessages[`${attempt}`], message: "model fail to generate function call args" })
             throw new Error ("Error ⚠️: Gemini fail to use function call🤦")
           }
           io.to(gameId).emit("system:message", { message: retryMessages[`${attempt}`], keepLoading: true })
@@ -473,13 +479,13 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       }
     console.log(`totalInputToken: ${totalInputToken}`);
     if (totalInputToken > triggerLimit) {
-      await triggerSummarizationTool.triggerSummarization({game, messages, character, language})
+      await triggerSummarizationTool.triggerSummarization({game, gameId, messages, character, language})
     }
     return;
     }
   } catch (error) {
     console.error("Error ⚠️: fail to call Gemini API: ", error);
-    io.to(gameId).emit("message:error", { error: "Error ⚠️: fail to call Gemini API \n If you are trying to ask Gemini to roll a dice, please type '/roll XdY', which X is the number of dice and Y is the number of faces of the dice, to roll dice.", originalMessage: message })
+    io.to(gameId).emit("message:error", { error: "Error ⚠️: fail to call Gemini API \n Please click the reload button on side bar and try it again", originalMessage: message })
     newMessgesId.forEach((messageId) => messageHandlers.deleteMessage(messageId));
   }
 }

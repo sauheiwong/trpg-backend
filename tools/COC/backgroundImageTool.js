@@ -152,12 +152,12 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
                 // Use a computed property name to update the specific key in the backgroundImages map.
                 [`backgroundImages.${name}`]: imageUrl,
                 // Also update the current background image to the new one.
-                ["currentBackgroundImage"]: imageUrl,
+                ["currentBackgroundImage"]: { imageUrl, name}
             }
         })
 
         // 7. Prepare a success message with the image embedded in Markdown format.
-        const successMessageContent = `Success to generate a background image!\n![background](${imageUrl})`;
+        const successMessageContent = `Success to generate a background image!\n\n![background](${imageUrl})`;
         
         io.to(gameId).emit("system:message", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing..."});
         
@@ -177,7 +177,7 @@ const generateBackgroundImage = async ({ name, imagePrompt, gameId }) => {
         
     } catch (error) {
         console.error("Error ⚠️: fail to generate an image: ", error.response ? error.response.data : error.message);
-
+        io.to(gameId).emit("system:error", { functionName: "generateBackgroundImage", error: error.response ? error.response.data : error.message });
         // Return a detailed error object to the Gemini model.
         return { toolResult: {
             result: "error",

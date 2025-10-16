@@ -41,7 +41,7 @@ const allocateSkillPoint = async({ gameId, occupationSkills, totalPoint }) => {
         };
     } catch (e) {
         const errorMessage = `Error⚠️: fail to create an UI: ${e.message}`
-        io.to(gameId).emit("system:message", { message: errorMessage })
+        io.to(gameId).emit("system:error", { functionName: "allocateSkillPoint", error: e.message });
         return {
             toolResult: {
                 result: "error",

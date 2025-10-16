@@ -48,7 +48,7 @@ router.post(
 );
 
 // roll dice
-router.post("/api/roll", requireAuth, rollDiceController.rollDice);
+router.post("/api/roll", requireAuth, rollDiceController.rollDiceController);
 
 // COCgame
 router.get("/api/game", requireAuth, gameCOCController.getGame);

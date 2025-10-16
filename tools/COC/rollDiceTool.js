@@ -36,12 +36,16 @@ const rollDice = (expression) => {
     const finalResult = evaluate(resolvedExpression)
 
     // Return a structured object containing the full process and the final numeric result.
+    console.log(`got result:\n${JSON.stringify({
+      message: `${expression} => ${resolvedExpression} = ${Math.floor(finalResult)}`,
+      result: Math.floor(finalResult),
+    }, null, 2)}`)
     return {
       message: `${expression} => ${resolvedExpression} = ${Math.floor(finalResult)}`,
       result: Math.floor(finalResult),
     };
   } catch (error) {
-    return { message: "Invalid dice format" };
+    return new Error ("Invalid dice format");
   }
 };
 
@@ -53,7 +57,8 @@ const rollDice = (expression) => {
  * @returns {object} An object containing results for the tool and a message for the model.
  */
 const rollSingleDice = async({ actor, reason, dice, success, secret, gameId }) => {
-  // Use the rollDice utility to get the result of the dice expression.
+  try {
+    // Use the rollDice utility to get the result of the dice expression.
   const rollResult = rollDice(dice);
 
   // Log the detailed result to the server console for debugging.
@@ -85,6 +90,15 @@ const rollSingleDice = async({ actor, reason, dice, success, secret, gameId }) =
 
   // Return the result to the Gemini model so it can continue its reasoning.
   return { toolResult: responseData, functionMessage: message };
+  } catch (e) {
+    console.error(`Error ⚠️: fail to roll a dice: ${e.message}`)
+    io.to(gameId).emit("system:error", { functionName: "rollSingleDice", error: e.message });
+    return { toolResult: {
+      result: "error",
+      error: "Failed to roll a dice",
+      details: error.message,
+    }};
+  }
 };
 
 

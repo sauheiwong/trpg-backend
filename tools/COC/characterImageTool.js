@@ -105,7 +105,7 @@ const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId
         console.log(`[Image Gen] Character ${characterId} image URL updated in database.`);
 
         // 7. Prepare and send a success message to the clients.
-        const successMessageContent = `Success to generate an avatar of your character！\n![character avatar](${imageUrl})`;
+        const successMessageContent = `Success to generate an avatar of your character!\n\n![character avatar](${imageUrl})`;
         io.to(gameId).emit("system:message", { message: successMessageContent , followingMessage: "Gemini love and think how to introduce it own drawing......"});
 
         
@@ -126,7 +126,7 @@ const generateCharacterImage = async ({ imagePrompt, characterId, gameId, userId
         
     } catch (error) {
         console.error("Error ⚠️: fail to generate an image: ", error.response ? error.response.data : error.message);
-
+        io.to(gameId).emit("system:error", { functionName: "generateCharacterImage", error: error.response ? error.response.data : error.message });
         return { toolResult: {
             result: "error",
             error: "Failed to generate image due to an internal API error or quota issue.",

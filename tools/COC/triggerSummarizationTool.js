@@ -42,10 +42,10 @@ const summarySchema = {
     required: ["goldenFacts", "recentEvents"]
 };
 
-const triggerSummarization = async({game, messages, character, language}) => {
+const triggerSummarization = async({game, gameId, messages, character, language}) => {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++){
         try {
-            console.log(`game ${game._id} triggering summrization`);
+            console.log(`game ${gameId} triggering summrization`);
 
             const messagesToSummarize = messages.slice(game.lastSummarizedMessageIndex);
 
@@ -54,10 +54,10 @@ const triggerSummarization = async({game, messages, character, language}) => {
                 return;
             }
 
-            let summary = await COCGameSummaryModel.findOne({ gameId: game._id });
+            let summary = await COCGameSummaryModel.findOne({ gameId: gameId });
 
             if (!summary) {
-                summary = await COCGameSummaryModel.create({ gameId: game._id });
+                summary = await COCGameSummaryModel.create({ gameId: gameId });
             }
 
             const contentToSummarize = `你是一位專業的 TRPG 遊戲記錄分析師。你的任務是閱讀舊的遊戲摘要和一段新的對話，然後根據指定的 JSON 結構，精準地提取和生成資訊。
@@ -120,7 +120,7 @@ ${messagesToSummarize.map(m => `${m.role}: ${m.content}`).join('\n')}
             console.log(`newSummary: ${JSON.stringify(newSummary, null, 2)}`);
 
             const newAnchorIndex = messages.length - buffer;
-            await Game.findByIdAndUpdate(game._id, {
+            await Game.findByIdAndUpdate(gameId, {
                 $set: {
                     lastSummarizedMessageIndex: newAnchorIndex < 0 ? 0 : newAnchorIndex, // 確保錨點不小於 0
                 },
@@ -143,16 +143,17 @@ ${messagesToSummarize.map(m => `${m.role}: ${m.content}`).join('\n')}
 
             await summary.save();
 
-            console.log(`game ${game._id} summrization success. New anchor is at index ${newAnchorIndex}`)
+            console.log(`game ${gameId} summrization success. New anchor is at index ${newAnchorIndex}`)
 
-            io.to(game._id.toString()).emit("system:message", { message: "New summary have been created" })
-            io.to(game._id.toString()).emit("summary:updated", { newSummary: {
+            io.to(gameId.toString()).emit("system:message", { message: "New summary have been created" })
+            io.to(gameId.toString()).emit("summary:updated", { newSummary: {
                 ...newSummary,
                 goldenFacts: summary.summary.goldenFacts,
             } })
             return;
         } catch (e) {
             console.error(`Error⚠️: fail to generate a new summary: ${e}`)
+            io.to(gameId).emit("system:error", { functionName: "triggerSummarization", error: e.message });
             return;
         }
     }

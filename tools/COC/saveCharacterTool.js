@@ -62,10 +62,11 @@ const saveCharacterStatus = async (infor) => {
 
   } catch (error) {
     console.error("Error saving character:", error)
+    io.to(gameId).emit("system:error", { functionName: "saveCharacterStatus", error: error.message });
     return {
       toolResult: {
         result: "error",
-        message: "Failed to save the character due to a database error.",
+        message: "Failed to save the character.",
         errorDetails: error.message
       }
     };

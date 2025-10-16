@@ -49,6 +49,7 @@ const updateCharacterStats = async ({ characterId, hp, mp, san, gameId, userId }
 
   } catch (error) {
     console.error("更新角色屬性失敗:", error);
+    io.to(gameId).emit("system:error", { functionName: "updateCharacterStats", error: error.message });
     return {
       toolResult: {
         success: false,
