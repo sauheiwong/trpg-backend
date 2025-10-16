@@ -31,13 +31,10 @@ const gameSchema = new Schema({
     default: 0, // 遊戲開始時，錨點在第0則訊息之前
   },
   currentBackgroundImage: {
-    type: mongoose.Schema.Types.Mixed,
-    default: {}
+    name: { type: String, default: ""},
+    imageUrl: { type: String, default: ""},
   },
-  backgroundImages: {
-    type: mongoose.Schema.Types.Mixed,
-    default: {}
-  },
+  backgroundImages: { type: Object, default: { nothing: "" }},
   tokenUsage: {
     inputTokens: { type: Number, default: 0 },
     outputTokens: { type: Number, default: 0 },
