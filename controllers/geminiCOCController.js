@@ -330,7 +330,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             }
           })
 
-          console.log(`result: ${JSON.stringify(result.candidates, null, 2)}`)
+          console.log(`result.candidates: ${JSON.stringify(result.candidates, null, 2)}`)
 
           const { promptTokenCount, candidatesTokenCount, totalTokenCount, thoughtsTokenCount } = result.usageMetadata;
           
@@ -341,6 +341,10 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
           }
 
           console.log(`input_tokens: ${tokenUsage.inputTokens} | output_tokens: ${tokenUsage.outputTokens} | total_tokens: ${tokenUsage.totalTokens}`);
+
+          if(result.candidates[0]?.finishReason === "MALFORMED_FUNCTION_CALL" || tokenUsage.outputTokens === 0){
+            throw new Error("MALFORMED_FUNCTION_CALL")
+          }
           
           await gameModel.findByIdAndUpdate(gameId, {
             $inc: {
@@ -456,7 +460,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       } catch (error) {
         console.log(`Error ⚠️: ${error}`);
         lastError = error;
-        if (error.message.includes("500") || error.message.includes("503") || result[0].finshReason === "MALFORMED_FUNCTION_CALL") {
+        if (error.message.includes("500") || error.message.includes("503") || error.message.includes("MALFORMED_FUNCTION_CALL")) {
           if (attempt === MAX_RETRIES - 1) {
             console.error("Error ⚠️: Gemini API meet max retries. Stop retry");
             io.to(gameId).emit("message:error", { error: retryMessages[`${attempt}`], message: "model fail to generate function call args" })
