@@ -6,7 +6,7 @@ import messageHandlers from "../handlers/messageHandlers.js";
 import messageModel from "../models/messageModel.js";
 import gameModel from "../models/gameModel.js";
 
-import configService from "../services/config.service.js"
+import configService from "../services/config.service.js";
 
 import { io } from "../app.js";
 import { buildContextForLLM } from "../tools/COC/buildContextForLLMTool.js";
@@ -20,16 +20,20 @@ import backgroundImageTool from "../tools/COC/backgroundImageTool.js";
 import allocatePointTool from "../tools/COC/allocatePointTool.js";
 import skillPointTool from "../tools/COC/skillPointTool.js";
 
-const tokenLimit = 4*10**4; // 40,000
+const tokenLimit = 4 * 10 ** 4; // 40,000
 const MAX_TURNS = 5;
-const MAX_RETRIES = 5
+const MAX_RETRIES = 5;
 const INITAIL_DELAY_MS = 1000;
 const LLM_NAME = "gemini-2.5-flash-preview-09-2025";
 
 await configService.loadConfig(true);
 
-const IsCOCSinglePlayOpen = Boolean(configService.get("IsCOCSinglePlayOpen", false));
-const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePlayHasNotCharacterSystemPrompt", `{
+const IsCOCSinglePlayOpen = Boolean(
+  configService.get("IsCOCSinglePlayOpen", false)
+);
+const COCSinglePlayHasNotCharacterSystemPrompt = configService.get(
+  "COCSinglePlayHasNotCharacterSystemPrompt",
+  `{
   "profile": {
     "role": "專業、友善、高效的 CoC 守密人 (KP)。",
     "task": "引導新玩家完成角色創建流程。"
@@ -62,8 +66,11 @@ const COCSinglePlayHasNotCharacterSystemPrompt = configService.get("COCSinglePla
       "interest": "INT*2"
     }
   }
-}`); 
-const COCSinglePlayHasCharacterSystemPrompt = configService.get("COCSinglePlayHasCharacterSystemPrompt", `{
+}`
+);
+const COCSinglePlayHasCharacterSystemPrompt = configService.get(
+  "COCSinglePlayHasCharacterSystemPrompt",
+  `{
   "profile": {
     "identity": "專業、友善且高效的《克蘇魯的呼喚》TRPG 守密人 (KP)。",
     "primary_task": "引導玩家體驗未知、恐怖與瘋狂的冒險，並根據其行動推動劇情。",
@@ -108,67 +115,86 @@ const COCSinglePlayHasCharacterSystemPrompt = configService.get("COCSinglePlayHa
     "player_agency": "嚴守玩家代理權，絕不替玩家角色（PL）做決定。你控制所有非玩家角色（NPC）及其動機。"
   },
   "final_instruction": "在你的最終回應中，不得包含任何內部的思考、推理或『THOUGHT』區塊。"
-}`);
-const ThankForTesting = configService.get("ThankForTesting", "Testing time has been ended. Thank you for your testing😆")
+}`
+);
+const ThankForTesting = configService.get(
+  "ThankForTesting",
+  "Testing time has been ended. Thank you for your testing😆"
+);
 const triggerLimit = configService.get("triggerLimit", 12000); // 12K
 
-
 const retryMessages = {
-  "0": "Brewing a little more coffee... Gemini is giving it another shot! ☕",
-  "1": "Hmm, that didn't quite work. Gemini is trying a different angle! 🤔",
-  "2": "Whoops, a little turbulence! Rerouting the connection now... ✈️",
-  "3": "Just a moment! Gemini is tightening some digital screws... 🔩",
-  "4": "It looks like our Gemini KP is facing some stubborn network issues. \nWe've made several attempts to resolve it automatically. \nCould you please try again shortly?🙇‍♀️ \nOur team has been alerted if the issue persists."
-}
+  0: "Brewing a little more coffee... Gemini is giving it another shot! ☕",
+  1: "Hmm, that didn't quite work. Gemini is trying a different angle! 🤔",
+  2: "Whoops, a little turbulence! Rerouting the connection now... ✈️",
+  3: "Just a moment! Gemini is tightening some digital screws... 🔩",
+  4: "It looks like our Gemini KP is facing some stubborn network issues. \nWe've made several attempts to resolve it automatically. \nCould you please try again shortly?🙇‍♀️ \nOur team has been alerted if the issue persists.",
+};
 
 const language_code = {
-  "en": "English",
+  en: "English",
   "zh-Hant": "繁體中文",
-}
+};
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API });
 
 const startPrompt = `Start, please introduce yourself and what the game is?`;
 
 const handlerNewCOCChat = async (socket) => {
-  console.log("gemini start to run 🤖")
+  console.log("gemini start to run 🤖");
   const userId = socket.user._id;
-  const userLanguage = language_code[socket.user.language] || language_code["en"];
+  const userLanguage =
+    language_code[socket.user.language] || language_code["en"];
 
-  if (!(IsCOCSinglePlayOpen || Boolean(socket.user.isAdmin) || Boolean(socket.user.isTester))) {
+  if (
+    !(
+      IsCOCSinglePlayOpen ||
+      Boolean(socket.user.isAdmin) ||
+      Boolean(socket.user.isTester)
+    )
+  ) {
     socket.emit("game:created", {
       message: ThankForTesting,
-      gameId: "1"
-    })
+      gameId: "1",
+    });
     return;
   }
 
-  try{
+  try {
     const result = await ai.models.generateContent({
-        model: LLM_NAME,
-        contents: startPrompt,
-        config: { 
-          systemInstruction: COCSinglePlayHasNotCharacterSystemPrompt + `please response with ${userLanguage}`,
-         }
-    })
+      model: LLM_NAME,
+      contents: startPrompt,
+      config: {
+        systemInstruction:
+          COCSinglePlayHasNotCharacterSystemPrompt +
+          `please response with ${userLanguage}`,
+      },
+    });
 
     const modelResponseText = result.text;
 
     console.log("Model Response Text: ", modelResponseText);
 
-    const { promptTokenCount, candidatesTokenCount, totalTokenCount, thoughtsTokenCount } = result.usageMetadata;
+    const {
+      promptTokenCount,
+      candidatesTokenCount,
+      totalTokenCount,
+      thoughtsTokenCount,
+    } = result.usageMetadata;
 
-    console.log(`input_tokens: ${promptTokenCount} | output_tokens: ${candidatesTokenCount} | thoughtsTokenCount: ${thoughtsTokenCount} | totak_tokens: ${totalTokenCount}`)
+    console.log(
+      `input_tokens: ${promptTokenCount} | output_tokens: ${candidatesTokenCount} | thoughtsTokenCount: ${thoughtsTokenCount} | totak_tokens: ${totalTokenCount}`
+    );
 
     const tokenUsage = {
       inputTokens: promptTokenCount ?? 0,
       outputTokens: (candidatesTokenCount ?? 0) + (thoughtsTokenCount ?? 0),
       totalTokens: totalTokenCount ?? 0,
-    }
+    };
 
     const game = await gameHandlers.createGame(userId);
     const gameId = game._id;
-    
+
     await messageModel.create({
       gameId,
       message_type: "model_text_response",
@@ -177,48 +203,59 @@ const handlerNewCOCChat = async (socket) => {
       usage: {
         inputTokens: tokenUsage.inputTokens,
         outputTokens: tokenUsage.outputTokens,
-      }
-    })
+      },
+    });
 
     await gameModel.findByIdAndUpdate(gameId, {
       $inc: {
         "tokenUsage.inputTokens": tokenUsage.inputTokens,
         "tokenUsage.outputTokens": tokenUsage.outputTokens,
         "tokenUsage.totalTokens": tokenUsage.totalTokens,
-      }
-    })
+      },
+    });
 
     socket.emit("game:created", {
       message: modelResponseText,
       gameId: gameId,
       tokenUsage,
-    })
-    
-    socket.join(gameId);
-    console.log(`player ${socket.user.username} join game room ${gameId}`)
+    });
 
+    socket.join(gameId);
+    console.log(`player ${socket.user.username} join game room ${gameId}`);
   } catch (error) {
-    console.error("Error ⚠️ in handlerNewCOCChat: fail to call Gemini API: ", error);
+    console.error(
+      "Error ⚠️ in handlerNewCOCChat: fail to call Gemini API: ",
+      error
+    );
     socket.emit("game:createError", {
-      message: "fail to get response from AI, please try later."
-    })
+      message: "fail to get response from AI, please try later.",
+    });
   }
-}
+};
 
 const handlerUserMessageCOCChat = async (data, user, role) => {
-  console.log("Gemini start reading")
+  console.log("Gemini start reading");
   const { gameId, message } = data;
-  const userId = user._id; 
+  const userId = user._id;
   const language = language_code[user.language] || language_code["en"];
   if (!message || message.length === 0) {
-    io.to(gameId).emit("message:error", { error: "empty input" })
+    io.to(gameId).emit("message:error", { error: "empty input" });
     return;
   }
 
-  console.log(`!(IsCOCSinglePlayOpen || Boolean(user.isAdmin)): !(${IsCOCSinglePlayOpen} || ${Boolean(user.isAdmin)}) ==> ${!(IsCOCSinglePlayOpen || Boolean(user.isAdmin))}`)
+  console.log(
+    `!(IsCOCSinglePlayOpen || Boolean(user.isAdmin)): !(${IsCOCSinglePlayOpen} || ${Boolean(
+      user.isAdmin
+    )}) ==> ${!(IsCOCSinglePlayOpen || Boolean(user.isAdmin))}`
+  );
 
-  if (!(IsCOCSinglePlayOpen || Boolean(user.isAdmin) || Boolean(user.isTester))) {
-    io.to(gameId).emit("message:received", { message: ThankForTesting, role: "system" });
+  if (
+    !(IsCOCSinglePlayOpen || Boolean(user.isAdmin) || Boolean(user.isTester))
+  ) {
+    io.to(gameId).emit("message:received", {
+      message: ThankForTesting,
+      role: "system",
+    });
     return;
   }
 
@@ -226,7 +263,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
   // console.log("gemini got message from user with gameId", gameId);
   // io.to(gameId).emit("message:received", { message: "got your message "+ message, role: "model" });
   // return;
-  
+
   const { messages, character, game } = await gameHandlers.getGameById(
     gameId,
     userId
@@ -237,7 +274,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
     message_type: "user_prompt",
     role: "user",
     content: message,
-  })
+  });
 
   const newMessgesId = [userNewMessage._id]; // go to delete if gemini fail
 
@@ -247,7 +284,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
     const availableTools = {
       rollSingleDice: rollDiceTool.rollSingleDice,
       // updateGameState: saveGameStateTool.updateGameState
-      generateCharacterImage: characterImageTool.generateCharacterImage
+      generateCharacterImage: characterImageTool.generateCharacterImage,
     };
 
     let functionDeclarations = [
@@ -259,8 +296,10 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
     console.log("hasCharacter: ", hasCharacter);
 
     if (hasCharacter) {
-      availableTools["updateCharacterStats"] = updateCharacterStatsTool.updateCharacterStats;
-      availableTools["generateBackgroundImage"] = backgroundImageTool.generateBackgroundImage;
+      availableTools["updateCharacterStats"] =
+        updateCharacterStatsTool.updateCharacterStats;
+      availableTools["generateBackgroundImage"] =
+        backgroundImageTool.generateBackgroundImage;
       functionDeclarations = [
         ...functionDeclarations,
         ...[
@@ -269,8 +308,10 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
         ],
       ];
     } else {
-      availableTools["saveCharacterStatus"] = saveCharacterTool.saveCharacterStatus;
-      availableTools["allocateCharacterPoint"] = allocatePointTool.allocateCharacterPoint;
+      availableTools["saveCharacterStatus"] =
+        saveCharacterTool.saveCharacterStatus;
+      availableTools["allocateCharacterPoint"] =
+        allocatePointTool.allocateCharacterPoint;
       availableTools["rollCharacterStatus"] = rollDiceTool.rollCharacterStatus;
       availableTools["allocateSkillPoint"] = skillPointTool.allocateSkillPoint;
       functionDeclarations = [
@@ -288,76 +329,103 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
     const latestUserPrompt = { role: "user", parts: [{ text: message }] };
 
-    const contents = [...historyContents, latestUserPrompt]
+    const contents = [...historyContents, latestUserPrompt];
 
     // console.log("contents is: ", contents)
 
     const countTokensResponse = await ai.models.countTokens({
       model: LLM_NAME,
       contents: contents,
-    })
+    });
 
     const totalTokens = countTokensResponse.totalTokens;
 
     console.log("The total token before processing is: ", totalTokens);
     // --------------------------------------------------------------
 
-    if ( totalTokens > tokenLimit ) {
+    if (totalTokens > tokenLimit) {
       throw new Error("Content window is too large, aborting request.");
     }
 
     let totalInputToken = 0;
 
-    const existBackgroundImages = Object.keys(game.backgroundImages).map((item) => item)
+    const existBackgroundImages = Object.keys(game.backgroundImages).map(
+      (item) => item
+    );
 
     // retry system
     let lastError = null;
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++){
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       console.log(`Gemini API ${attempt + 1} try`);
-      console.log(`current background: ${game.currentBackgroundImage.name} | all background: ${existBackgroundImages.length !== 0 ? existBackgroundImages : "null"}`)
+      console.log(
+        `current background: ${
+          game.currentBackgroundImage.name
+        } | all background: ${
+          existBackgroundImages.length !== 0 ? existBackgroundImages : "null"
+        }`
+      );
       try {
         // Gemini agent system
         for (let i = 0; i < MAX_TURNS; i++) {
-          console.log("start checking model used function call or not.")
+          console.log("start checking model used function call or not.");
           const result = await ai.models.generateContent({
             model: LLM_NAME,
             contents: contents,
-            config: { 
+            config: {
               tools: [{ functionDeclarations }],
-              systemInstruction: hasCharacter ? 
-              COCSinglePlayHasCharacterSystemPrompt + `please generate all response, **including function call args**, with **${language}**\n已經生成好的埸景:${ existBackgroundImages.length !== 0 ? existBackgroundImages : "null"}\n現在的場景是${game.currentBackgroundImage.name || "null"}`: 
-              COCSinglePlayHasNotCharacterSystemPrompt + `please generate all response, **including function call args**, with **${language}**`,
-            }
-          })
+              systemInstruction: hasCharacter
+                ? COCSinglePlayHasCharacterSystemPrompt +
+                  `please generate all response, **including function call args**, with **${language}**\n已經生成好的埸景:${
+                    existBackgroundImages.length !== 0
+                      ? existBackgroundImages
+                      : "null"
+                  }\n現在的場景是${game.currentBackgroundImage.name || "null"}`
+                : COCSinglePlayHasNotCharacterSystemPrompt +
+                  `please generate all response, **including function call args**, with **${language}**`,
+            },
+          });
 
-          console.log(`result.candidates: ${JSON.stringify(result.candidates, null, 2)}`)
+          console.log(
+            `result.candidates: ${JSON.stringify(result.candidates, null, 2)}`
+          );
 
-          const { promptTokenCount, candidatesTokenCount, totalTokenCount, thoughtsTokenCount } = result.usageMetadata;
-          
+          const {
+            promptTokenCount,
+            candidatesTokenCount,
+            totalTokenCount,
+            thoughtsTokenCount,
+          } = result.usageMetadata;
+
           const tokenUsage = {
             inputTokens: promptTokenCount ?? 0,
-            outputTokens: (candidatesTokenCount ?? 0) + (thoughtsTokenCount ?? 0),
+            outputTokens:
+              (candidatesTokenCount ?? 0) + (thoughtsTokenCount ?? 0),
             totalTokens: totalTokenCount ?? 0,
+          };
+
+          console.log(
+            `input_tokens: ${tokenUsage.inputTokens} | output_tokens: ${tokenUsage.outputTokens} | total_tokens: ${tokenUsage.totalTokens}`
+          );
+
+          if (
+            result.candidates[0]?.finishReason === "MALFORMED_FUNCTION_CALL" ||
+            tokenUsage.outputTokens === 0
+          ) {
+            throw new Error("MALFORMED_FUNCTION_CALL");
           }
 
-          console.log(`input_tokens: ${tokenUsage.inputTokens} | output_tokens: ${tokenUsage.outputTokens} | total_tokens: ${tokenUsage.totalTokens}`);
-
-          if(result.candidates[0]?.finishReason === "MALFORMED_FUNCTION_CALL" || tokenUsage.outputTokens === 0){
-            throw new Error("MALFORMED_FUNCTION_CALL")
-          }
-          
           await gameModel.findByIdAndUpdate(gameId, {
             $inc: {
               "tokenUsage.inputTokens": tokenUsage.inputTokens,
               "tokenUsage.outputTokens": tokenUsage.outputTokens,
               "tokenUsage.totalTokens": tokenUsage.totalTokens,
-            }
-          })
+            },
+          });
 
-          if (result.functionCalls && result.functionCalls.length > 0){
+          if (result.functionCalls && result.functionCalls.length > 0) {
             const functionCall = result.functionCalls[0];
 
-            console.log(`functionCall is: ${JSON.stringify(functionCall)}`)
+            console.log(`functionCall is: ${JSON.stringify(functionCall)}`);
 
             const { name, args } = functionCall;
 
@@ -370,12 +438,16 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               usage: {
                 inputTokens: tokenUsage.inputTokens,
                 outputTokens: tokenUsage.outputTokens,
-              }
-            })
+              },
+            });
 
-            io.to(gameId).emit("system:message", {message: `Gemini use ${name} function`, followingMessage: "Gemini is waiting the result☕", tokenUsage})
+            io.to(gameId).emit("system:message", {
+              message: `Gemini use ${name} function`,
+              followingMessage: "Gemini is waiting the result☕",
+              tokenUsage,
+            });
 
-            newMessgesId.push(modelFunctionCallMessage._id)
+            newMessgesId.push(modelFunctionCallMessage._id);
 
             if (!availableTools[name]) {
               throw new Error("unknown function call: ", name);
@@ -385,28 +457,37 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             args["gameId"] = gameId;
             args["game"] = game;
             args["characterId"] = character?._id || null;
-            args["language_code"] = user.language
+            args["language_code"] = user.language;
 
-            const { toolResult, functionMessage } = await availableTools[name](args);
+            const { toolResult, functionMessage } = await availableTools[name](
+              args
+            );
 
-            console.log("function execution result: ", JSON.stringify(toolResult, null, 2));
+            console.log(
+              "function execution result: ",
+              JSON.stringify(toolResult, null, 2)
+            );
 
             contents.push({
               role: "model",
-              parts: [{
-                functionCall: functionCall
-              }]
-            })
+              parts: [
+                {
+                  functionCall: functionCall,
+                },
+              ],
+            });
 
             contents.push({
               role: "user",
-              parts: [{
-                functionResponse: {
-                  name,
-                  response: toolResult,
-                }
-              }]
-            })
+              parts: [
+                {
+                  functionResponse: {
+                    name,
+                    response: toolResult,
+                  },
+                },
+              ],
+            });
 
             const functionCallResultMessage = await messageModel.create({
               gameId,
@@ -415,14 +496,13 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               content: functionMessage,
               function_result: {
                 name,
-                result: toolResult
-              }
-            })
+                result: toolResult,
+              },
+            });
 
-            newMessgesId.push(functionCallResultMessage._id)
-
+            newMessgesId.push(functionCallResultMessage._id);
           } else {
-            console.log("model don't have use function call.")
+            console.log("model don't have use function call.");
             const modelResponseTextPart = result.candidates[0].content?.parts;
             let modelResponseText = null;
             if (modelResponseTextPart.length > 1) {
@@ -431,12 +511,14 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               modelResponseText = modelResponseTextPart[0].text;
             }
 
-            if (!modelResponseText || modelResponseText.trim() === "" ) {
+            if (!modelResponseText || modelResponseText.trim() === "") {
               console.error("Error ⚠️: Gemini returned an empty response.");
               throw new Error("Gemini returned an empty response");
             }
 
-            console.log("Gemini Response Text is valid, saving messages to DB...")
+            console.log(
+              "Gemini Response Text is valid, saving messages to DB..."
+            );
 
             totalInputToken = tokenUsage.inputTokens;
 
@@ -448,51 +530,81 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
               usage: {
                 inputTokens: tokenUsage.inputTokens,
                 outputTokens: tokenUsage.outputTokens,
-              }
-            })
+              },
+            });
 
-            newMessgesId.push(modelResponseMessage._id)
+            newMessgesId.push(modelResponseMessage._id);
 
-            io.to(gameId).emit("message:received", { message: modelResponseText, role: "model", tokenUsage });
+            io.to(gameId).emit("message:received", {
+              message: modelResponseText,
+              role: "model",
+              tokenUsage,
+            });
             break;
           }
         }
       } catch (error) {
         console.log(`Error ⚠️: ${error}`);
         lastError = error;
-        if (error.message.includes("500") || error.message.includes("503") || error.message.includes("MALFORMED_FUNCTION_CALL")) {
+        if (
+          error.message.includes("500") ||
+          error.message.includes("503") ||
+          error.message.includes("MALFORMED_FUNCTION_CALL")
+        ) {
           if (attempt === MAX_RETRIES - 1) {
             console.error("Error ⚠️: Gemini API meet max retries. Stop retry");
-            io.to(gameId).emit("message:error", { error: retryMessages[`${attempt}`], message: "model fail to generate function call args" })
-            throw new Error ("Error ⚠️: Gemini fail to use function call🤦")
+            io.to(gameId).emit("message:error", {
+              error: retryMessages[`${attempt}`],
+              message: "model fail to generate function call args",
+            });
+            throw new Error("Error ⚠️: Gemini fail to use function call🤦");
           }
-          io.to(gameId).emit("system:message", { message: retryMessages[`${attempt}`], keepLoading: true })
+          io.to(gameId).emit("system:message", {
+            message: retryMessages[`${attempt}`],
+            keepLoading: true,
+          });
 
           const delay = INITAIL_DELAY_MS * Math.pow(2, attempt);
           const jitter = Math.random() * 1000;
           const waitTime = delay + jitter;
 
-          console.log(`Gemini API Error in ${attempt + 1} try: Error ⚠️: ${error.message}`);
-          console.log(`Retry 🤦 at ${(waitTime / 1000).toFixed(2)} second later`);
+          console.log(
+            `Gemini API Error in ${attempt + 1} try: Error ⚠️: ${error.message}`
+          );
+          console.log(
+            `Retry 🤦 at ${(waitTime / 1000).toFixed(2)} second later`
+          );
 
-          await new Promise(resolve => setTimeout(resolve, waitTime));
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
         } else {
           console.log(`Non retry Error ⚠️:\n${JSON.stringify(error, null, 2)}`);
-          throw error
+          throw error;
         }
       }
+    }
     console.log(`totalInputToken: ${totalInputToken}`);
     if (totalInputToken > triggerLimit) {
-      await triggerSummarizationTool.triggerSummarization({game, gameId, messages, character, language})
+      await triggerSummarizationTool.triggerSummarization({
+        game,
+        gameId,
+        messages,
+        character,
+        language,
+      });
     }
     return;
-    }
   } catch (error) {
     console.error("Error ⚠️: fail to call Gemini API: ", error);
-    io.to(gameId).emit("message:error", { error: "Error ⚠️: fail to call Gemini API \n Please click the reload button on side bar and try it again", originalMessage: message })
-    newMessgesId.forEach((messageId) => messageHandlers.deleteMessage(messageId));
+    io.to(gameId).emit("message:error", {
+      error:
+        "Error ⚠️: fail to call Gemini API \n Please click the reload button on side bar and try it again",
+      originalMessage: message,
+    });
+    newMessgesId.forEach((messageId) =>
+      messageHandlers.deleteMessage(messageId)
+    );
   }
-}
+};
 
 export default {
   handlerNewCOCChat,

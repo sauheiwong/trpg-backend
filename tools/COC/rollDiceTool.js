@@ -4,7 +4,6 @@ import { io } from "../../app.js";
 import { Type } from "@google/genai";
 import { evaluate } from "mathjs";
 
-
 /**
  * Parses and evaluates a dice roll expression (e.g., '3d6', '(2d6+6)*5').
  * @param {string} expression - The dice expression to evaluate.
@@ -33,22 +32,31 @@ const rollDice = (expression) => {
       });
 
     // Evaluate the expression to get the final result.
-    const finalResult = evaluate(resolvedExpression)
+    const finalResult = evaluate(resolvedExpression);
 
     // Return a structured object containing the full process and the final numeric result.
-    console.log(`got result:\n${JSON.stringify({
-      message: `${expression} => ${resolvedExpression} = ${Math.floor(finalResult)}`,
-      result: Math.floor(finalResult),
-    }, null, 2)}`)
+    console.log(
+      `got result:\n${JSON.stringify(
+        {
+          message: `${expression} => ${resolvedExpression} = ${Math.floor(
+            finalResult
+          )}`,
+          result: Math.floor(finalResult),
+        },
+        null,
+        2
+      )}`
+    );
     return {
-      message: `${expression} => ${resolvedExpression} = ${Math.floor(finalResult)}`,
+      message: `${expression} => ${resolvedExpression} = ${Math.floor(
+        finalResult
+      )}`,
       result: Math.floor(finalResult),
     };
   } catch (error) {
-    return new Error ("Invalid dice format");
+    return new Error("Invalid dice format");
   }
 };
-
 
 /**
  * Handles a single dice roll for a character, determines success, and notifies clients.
@@ -56,51 +64,66 @@ const rollDice = (expression) => {
  * @param {object} params - The parameters for the dice roll.
  * @returns {object} An object containing results for the tool and a message for the model.
  */
-const rollSingleDice = async({ actor, reason, dice, success, secret, gameId }) => {
+const rollSingleDice = async ({
+  actor,
+  reason,
+  dice,
+  success,
+  secret,
+  gameId,
+}) => {
   try {
     // Use the rollDice utility to get the result of the dice expression.
-  const rollResult = rollDice(dice);
+    const rollResult = rollDice(dice);
 
-  // Log the detailed result to the server console for debugging.
-  console.log(`roll dice: ${rollResult.message}, success limit is: ${success}, so ${rollResult.result <= success}`);
+    // Log the detailed result to the server console for debugging.
+    console.log(
+      `roll dice: ${rollResult.message}, success limit is: ${success}, so ${
+        rollResult.result <= success
+      }`
+    );
 
-  // Prepare the data that will be returned to the Gemini model.
-  const responseData = {
-    actor,
-    reason,
-    dice,
-    result: rollResult.message,
-    // Determine if the roll was successful by comparing the result to the success threshold.
-    success: rollResult.result <= success,
-  }
+    // Prepare the data that will be returned to the Gemini model.
+    const responseData = {
+      actor,
+      reason,
+      dice,
+      result: rollResult.message,
+      // Determine if the roll was successful by comparing the result to the success threshold.
+      success: rollResult.result <= success,
+    };
 
-  // Create a descriptive message summarizing the action and outcome.
-  let message = `rollSingleDice:\n${JSON.stringify(responseData, null, 2)}`
-  const followingMessage = "Gemini is handling the result..."
+    // Create a descriptive message summarizing the action and outcome.
+    let message = `rollSingleDice:\n${JSON.stringify(responseData, null, 2)}`;
+    const followingMessage = "Gemini is handling the result...";
 
-  // Check if the roll is meant to be secret.
-  if (!secret){
-    // If public, emit the full result to all clients in the specified game room.
-    io.to(gameId).emit("system:message", { message, followingMessage });
-  } else {
-    // If secret, emit a generic message to clients, hiding the actual result.
-    message = "KP roll a secret dice."
-    io.to(gameId).emit("system:message", { message, followingMessage });
-  }
+    // Check if the roll is meant to be secret.
+    if (!secret) {
+      // If public, emit the full result to all clients in the specified game room.
+      io.to(gameId).emit("system:message", { message, followingMessage });
+    } else {
+      // If secret, emit a generic message to clients, hiding the actual result.
+      message = "KP roll a secret dice.";
+      io.to(gameId).emit("system:message", { message, followingMessage });
+    }
 
-  // Return the result to the Gemini model so it can continue its reasoning.
-  return { toolResult: responseData, functionMessage: message };
+    // Return the result to the Gemini model so it can continue its reasoning.
+    return { toolResult: responseData, functionMessage: message };
   } catch (e) {
-    console.error(`Error ⚠️: fail to roll a dice: ${e.message}`)
-    io.to(gameId).emit("system:error", { functionName: "rollSingleDice", error: e.message });
-    return { toolResult: {
-      result: "error",
-      error: "Failed to roll a dice",
-      details: error.message,
-    }};
+    console.error(`Error ⚠️: fail to roll a dice: ${e.message}`);
+    io.to(gameId).emit("system:error", {
+      functionName: "rollSingleDice",
+      error: e.message,
+    });
+    return {
+      toolResult: {
+        result: "error",
+        error: "Failed to roll a dice",
+        details: error.message,
+      },
+    };
   }
 };
-
 
 // This is the schema definition for the 'rollSingleDice' tool.
 // It tells the Gemini model what the function does and what parameters it expects.
@@ -117,7 +140,8 @@ const rollSingleDiceDeclaration = {
       },
       reason: {
         type: Type.STRING,
-        description: "本次擲骰的原因或目的。例如：'理智檢定'、'手槍射擊'。",
+        description:
+          "本次擲骰的原因或目的。例如：'理智檢定'、'手槍射擊'。必須使用和對話相同的語言。",
       },
       dice: {
         type: Type.STRING,
@@ -126,12 +150,12 @@ const rollSingleDiceDeclaration = {
       },
       success: {
         type: Type.NUMBER,
-        description: "行動成功的上限值。擲骰結果必須小於或等於此數值才算成功。"
+        description: "行動成功的上限值。擲骰結果必須小於或等於此數值才算成功。",
       },
       secret: {
         type: Type.BOOLEAN,
-        description: "暗骰開關。如果為true, 結果就不會向玩家展示。"
-      }
+        description: "暗骰開關。如果為true, 結果就不會向玩家展示。",
+      },
     },
     required: ["actor", "reason", "dice", "success"],
   },
@@ -143,8 +167,7 @@ const rollSingleDiceDeclaration = {
  * @param {object} params - The parameters for the function call.
  * @returns {object} An object containing the generated attributes and a summary message.
  */
-const rollCharacterStatus = async({ gameId }) => {
-
+const rollCharacterStatus = async ({ gameId }) => {
   // Define the standard attributes for a character and their corresponding dice formulas.
   const attributes = [
     { name: "STR", dice: "(3d6)*5" },
@@ -163,14 +186,18 @@ const rollCharacterStatus = async({ gameId }) => {
   attributes.forEach((attr) => {
     // Call the rollDice utility for each attribute's formula.
     result[`${attr.name}`] = rollDice(attr.dice);
-  })
+  });
 
-  const message = `Character generation result is:\n${JSON.stringify(result, null, 2)}`
-  const followingMessage = "Gemini is handling the result"
+  const message = `Character generation result is:\n${JSON.stringify(
+    result,
+    null,
+    2
+  )}`;
+  const followingMessage = "Gemini is handling the result";
 
   // Emit the result to all clients in the specified game room.
-  io.to(gameId).emit("system:message", { message, followingMessage })
-  
+  io.to(gameId).emit("system:message", { message, followingMessage });
+
   // Return the generated attributes to the Gemini model.
   return { toolResult: result, functionMessage: message };
 };
@@ -178,7 +205,8 @@ const rollCharacterStatus = async({ gameId }) => {
 // This is the schema definition for the 'rollCharacterStatus' tool.
 const rollCharacterStatusDeclaration = {
   name: "rollCharacterStatus",
-  description: "當玩家沒有角色，並希望透過隨機擲骰的方式來創建新角色時，使用此工具生成角色的初始六大屬性（力量、敏捷、體質等）。",
+  description:
+    "當玩家沒有角色，並希望透過隨機擲骰的方式來創建新角色時，使用此工具生成角色的初始六大屬性（力量、敏捷、體質等）。",
 };
 
 export default {

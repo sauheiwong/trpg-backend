@@ -13,9 +13,7 @@ import gameModel from "../../models/gameModel.js";
  * @returns {object} A result object for the Gemini model.
  */
 const saveCharacterStatus = async (infor) => {
-
-  try{
-
+  try {
     console.log("infor is: ", JSON.stringify(infor));
 
     // Convert the attributes array (e.g., [{name: 'STR', value: 50}]) into a JavaScript Map.
@@ -47,28 +45,35 @@ const saveCharacterStatus = async (infor) => {
     });
 
     // Notify all clients in the game room that the character has been saved successfully.
-    io.to(infor.gameId).emit("system:message", { message: "save character success", followingMessage: "Gemini got the result and thinking..." })
+    io.to(infor.gameId).emit("system:message", {
+      message: "save character success",
+      followingMessage: "Gemini got the result and thinking...",
+    });
 
-    io.to(infor.gameId).emit("character:updated", { newCharacter })
+    io.to(infor.gameId).emit("character:updated", { newCharacter });
 
     // Return a structured result to the Gemini model.
-    return { toolResult : {
-      result: "success",
-      character: newCharacter,
-      message: "please ask player 'do they want to generate an avatar of their character?'"
+    return {
+      toolResult: {
+        result: "success",
+        character: newCharacter,
+        message:
+          "please ask player 'do they want to generate an avatar of their character?'",
       },
-      functionMessage: "save character success"
+      functionMessage: "save character success",
     };
-
   } catch (error) {
-    console.error("Error saving character:", error)
-    io.to(gameId).emit("system:error", { functionName: "saveCharacterStatus", error: error.message });
+    console.error("Error saving character:", error);
+    io.to(gameId).emit("system:error", {
+      functionName: "saveCharacterStatus",
+      error: error.message,
+    });
     return {
       toolResult: {
         result: "error",
         message: "Failed to save the character.",
-        errorDetails: error.message
-      }
+        errorDetails: error.message,
+      },
     };
   }
 };
@@ -121,7 +126,7 @@ const saveCharacterStatusDeclaration = {
       },
       san: {
         type: Type.NUMBER,
-        description: "角色的SAN值"
+        description: "角色的SAN值",
       },
       attributes: {
         type: Type.ARRAY,
