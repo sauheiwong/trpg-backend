@@ -37,7 +37,7 @@ const login = (req, res, next) => {
       // build a JWT payload
       const payload = { id: user._id, username: user.username };
       const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, {
-        expiresIn: "24h",
+        expiresIn: "15d", // 記得要加返jwt過期的機制
       });
       return res.status(200).send({ token: `Bearer ${token}` });
     });
@@ -99,7 +99,7 @@ const editUser = async (req, res) => {
   const { name, language } = req.body;
   try {
     await userHandler.edit(name, language, req.user._id);
-    return res.status(200).send({ message: "ok" })
+    return res.status(200).send({ message: "ok" });
   } catch (error) {
     return res.status(500).send({ message: error });
   }
