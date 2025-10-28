@@ -57,7 +57,9 @@ router.get("/api/game/:id", requireAuth, gameCOCController.getGameById);
 
 // router.get("/api/game/test/characterUpdate/:id", requireAuth, COCTestController.characterUpdate)
 
-// router.get("/api/game/test/summary", requireAuth, summaryTest.summaryTest)
+// router.get("/api/game/test/summary", requireAuth, summaryTest.summaryTest);
+
+// router.get("/api/game/test/context", requireAuth, summaryTest.buildContextTest);
 
 // router.get(
 //   "/api/coc/characters",

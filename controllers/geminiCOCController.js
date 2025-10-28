@@ -45,7 +45,12 @@ const COCSinglePlayHasNotCharacterSystemPrompt = configService.get(
     "4. 屬性確定後：依序詢問故事的「時代」與「地點」，然後才詢問角色的「職業」。",
     "5. 解說技能點：分為與職業高度相關的「職業技能點」，以及自由選擇的「興趣技能點」。",
     "6.  屬性、職業、背景齊備後：禁止直接向玩家展示技能列表或計算點數。你必須在內部自行判斷該職業的技能列表及其基礎值，計算總點數，然後立即用這些資訊呼叫 allocateSkillPoint 工具。",
-    "7. 玩家最終確認角色無誤後：使用 "saveCharacterStatus()" 工具儲存資料。"
+    "7. 【技能驗證步驟】當玩家透過工具提交技能分配結果後，你【必須】執行以下驗證：",
+    "   a. 逐一計算每個技能的【花費點數】。公式為：【花費點數 = 玩家提交的最終值 - 該技能的基礎值】。",
+    "   b. 加總所有技能的【花費點數】，得到【總花費點數】。",
+    "   c. 檢查此【總花費點數】是否超過玩家擁有的【總職業點數】。",
+    "   d. 如果超過，你必須明確指出【總花費點數】和【超出的點數】，並要求玩家重新分配。",
+    "8. 玩家最終確認角色無誤後：使用 "saveCharacterStatus()" 工具儲存資料。"
   ],
   "rules": {
     "tools": "必須嚴格依照 workflow 中指定的時機使用指定工具，禁止虛構任何擲骰或計算結果。"
@@ -121,7 +126,7 @@ const ThankForTesting = configService.get(
   "ThankForTesting",
   "Testing time has been ended. Thank you for your testing😆"
 );
-const triggerLimit = configService.get("triggerLimit", 12000); // 12K
+const triggerLimit = configService.get("triggerLimit", 10000); // 10K
 
 const retryMessages = {
   0: "Brewing a little more coffee... Gemini is giving it another shot! ☕",
@@ -325,7 +330,12 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
       ];
     }
     // count token-------------------------------------------------
-    const historyContents = buildContextForLLM(game, character, messages);
+    const historyContents = await buildContextForLLM(
+      game,
+      gameId,
+      character,
+      messages
+    );
 
     const latestUserPrompt = { role: "user", parts: [{ text: message }] };
 
@@ -345,6 +355,16 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
 
     if (totalTokens > tokenLimit) {
       throw new Error("Content window is too large, aborting request.");
+    }
+
+    if (totalTokens > triggerLimit) {
+      triggerSummarizationTool.triggerSummarization({
+        game,
+        gameId,
+        messages,
+        character,
+        language,
+      });
     }
 
     let totalInputToken = 0;
@@ -543,6 +563,7 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
             break;
           }
         }
+        break;
       } catch (error) {
         console.log(`Error ⚠️: ${error}`);
         lastError = error;
@@ -582,16 +603,16 @@ const handlerUserMessageCOCChat = async (data, user, role) => {
         }
       }
     }
-    console.log(`totalInputToken: ${totalInputToken}`);
-    if (totalInputToken > triggerLimit) {
-      await triggerSummarizationTool.triggerSummarization({
-        game,
-        gameId,
-        messages,
-        character,
-        language,
-      });
-    }
+    // console.log(`totalInputToken: ${totalInputToken}`);
+    // if (totalInputToken > triggerLimit) {
+    //   await triggerSummarizationTool.triggerSummarization({
+    //     game,
+    //     gameId,
+    //     messages,
+    //     character,
+    //     language,
+    //   });
+    // }
     return;
   } catch (error) {
     console.error("Error ⚠️: fail to call Gemini API: ", error);

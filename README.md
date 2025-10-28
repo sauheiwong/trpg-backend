@@ -1,6 +1,8 @@
-# Project Proposal: An LLM-Powered Interactive Tabletop RPG Platform
+# Project Proposal: Pocket GM
 
-Student Name: Sau Hei Wong Date: September 24, 2025
+> An AI Game Master, Always on Standby
+
+Student Name: Sau Hei Wong Date: Oct 22, 2025
 
 ## Abstract
 
@@ -53,8 +55,6 @@ The scope of this capstone project is to deliver a polished and feature-complete
 
 - Database: MongoDB
 
-- Web Frontend: Vue.js
-
 - Mobile App: React Native
 
 - Real-time Communication: WebSockets (via Socket.IO) - Architecture for future multiplayer expansion
@@ -62,3 +62,5 @@ The scope of this capstone project is to deliver a polished and feature-complete
 - Story Generation AI: Google Gemini API
 
 - Image Generation AI: Google Imagen 4 API
+
+- User Analytics: Google Analytics for Firebase
